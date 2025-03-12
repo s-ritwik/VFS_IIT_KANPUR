@@ -4,7 +4,7 @@ clear all;
 h=10; %m
 range = .5; %km
 climb_alt=.1;%climb altitude in km
-endurance =10/60; %hrs(40 min)
+endurance =50/60; %hrs(40 min)
 mpayload = 185; %(kg)payload 
 L_by_D=8; % estimated L/D ratio
 %% --------------------------------Atmosphere data-------------------------------------------------------------------%
@@ -20,16 +20,17 @@ Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
 R=0.85;%0.7:0.05:1.1;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
-Nb = 3;%no of blades 
+Nb = 2;%no of blades 
 N_rotors=8; %no of motors/rotors
-AR = 12;% aspect ratio of rotor
-theta0  =(0:0.01:30)*pi/180;% collective
-thetatw = -12*pi/180;% twist rate
-RPM=1600;
-%Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
-%rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
+V_cruise=40;
+AR = 12;% aspect ratio of rotor
+theta0  =(0:0.01:30)*pi/180;% collective
+thetatw = -12;% twist rate
+RPM=2000;
+%Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
+%rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
 S_br =12; %no of cells in series(same voltage considered for back rotor)
 %% --------------------------------Losses & Efficiencies-------------------------------------------------------------%
@@ -142,7 +143,7 @@ for i=1:size(R,2)
             Power_servo=100;% assumption
             Power_camera=25;%25W
             aux_power=Power_servo+Power_camera;
-            aux_power=500; %assumpption 
+            aux_power=5000; %assumpption 
             energy_aux=aux_power*endurance;
 %-----------Total power and thrust in hover--------------------------------------------------------------------------- 
             Power_total_hover(i,j)=power_h(i,j)+aux_power;
@@ -162,26 +163,56 @@ for i=1:size(R,2)
             e_section_2(i,j)= Power_total_hover(i,j)*15; %watt (every power is in watt)
 
 %-----------Section 3 : vertical Climb from 0m to 60m @ 0.76m/s : ~79 seconds of climb--------------------------------------------------------------
-            e_section_3(i,j)=Pclimb(i,j)*60/Vc;
+            e_section_3(i,j)=N_rotors*Pclimb(i,j)*60/Vc;
 
 %-----------Section 4 : 10 seconds hover HOGE--------------------------------------------------------------
             e_section_4(i,j)=Power_total_hover(i,j)*10;
 
 %-----------Section 5 : 9deg climb--------------------------------------------------------------
+            e_section_5(i,j)=0;
+
+
+%-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
+            e_section_6(i,j)=GW(n)*9.8/L_by_D*30000; %Joules
             
-
-%-----------Section 6 : Cruise @300m--------------------------------------------------------------
-
-            
-%-----------Section 7 : V descent @-7.6m/s from 300m to 30m--------------------------------------------------------------
-
+%-----------Section 7 : V descent @-7.6m/s from 300m to 30m (NO POWER)--------------------------------------------------------------
+            e_section_7(i,j)=0;
 
 %-----------Section 8 : 30 seconds hover @30m--------------------------------------------------------------
+            e_section_8(i,j)=Power_total_hover(i,j)*30;
+
+%-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
+%           Basically all the energy that you have left should be utitlised
+%           here to hover for max T9 seconds.
+            e_section_9(i,j)=0;
+
+%-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
+            e_section_10(i,j)=0;
 
 
-%-----------Section 9 : best endurance l @30m--------------------------------------------------------------
+%-----------Section 11 : Cruise back approx 30km--------------------------------------------------------------
+            e_section_11(i,j)=GW(n)*9.8/L_by_D*30000; %Joules
 
-            energy(i,j) =(Power_total_hover(i,j)*(endurance)+Pclimb(i,j)*0.5/60+Pdescent(i,j)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
+
+%-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
+            e_section_12=0;
+
+%-----------Section 13 : HOGE @60m for 10 seconds--------------------------------------------------------------
+            e_section_13(i,j)=Power_total_hover(i,j)*10;
+
+
+%-----------Section 14 : Vertical descent @-0.5m/s from 60m to HIGE--------------------------------------------------------------
+            e_section_14(i,j)= N_rotors*Pdescent*60/Vd;
+
+%-----------Section 15 : HIGE for 15 seconds--------------------------------------------------------------
+            e_section_15(i,j)= Power_total_hover(i,j)*15;
+
+            energy_init(i,j) = e_section_2(i,j) + e_section_3(i,j) + e_section_4(i,j) + e_section_5(i,j) + ...
+              e_section_6(i,j) + e_section_7(i,j) + e_section_8(i,j) + e_section_9(i,j) + ...
+              e_section_10(i,j) + e_section_11(i,j) + e_section_12(i,j) + e_section_13(i,j) + ...
+              e_section_14(i,j) + e_section_15(i,j);
+            energy(i,j)=energy_init(i,j)/3600/batt_reserve; % Watt-hr energy after considering reserve;
+            % energy(i,j) =(Power_total_hover(i,j)*(endurance)+Pclimb(i,j)*0.5/60+Pdescent(i,j)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
             energy_MJ(i,j) = energy(i,j)*(3600)*10^(-6);%energy in mega -joules(MJ)
             C(i,j) =(((energy(i,j)/(No_of_battery*Nominal_volt))*1000)); %total battery capacity, all 2 batteries combined, in mAh=E(energy)/V(voltage), 3.6 volt for 1 cell;(17% for battery reserve)
             flight_time_min(i,j)= (batt_reserve*No_of_battery*Nominal_volt*(C(i,j))/ Power_total_hover(i,j))*60*10^(-3);%flight time in min
@@ -210,12 +241,12 @@ for i=1:size(R,2)
             Kv(i,j) = rpm(i,j)/(2*S_fr*3.6);% rpm per volt of one side
             mmotor = 0.5;%HK5-4030-355kv or Scorpion IM-8012-115kv
             mmotor= ((10^4.0499)*(Kv(i,j)^-0.5329))*10^-3;
-            Imax_fr(i,j)=(power_h(i,j)/2)/(2*S_fr*3.6);% maximum current of one side
+            Imax_fr(i,j)=(Power_total_hover(i,j)/N_rotors)/(2*S_fr*3.6);% maximum current of one side
             mesc_fr =0.8421*Imax_fr(i,j)*10^-3;%mass of esc(Thunder 300A 24S)
             m_rotor_group=N_rotors*(mrotor+mhub+mmotor+mesc_fr);%total front mass
 %-----------FUSELAGE------------------------------------------------------------------------------------------------%
-            nult=2; %ultimate load factor from vibhram
-            Lf=(L)*3.28+2;% total length of fuselage in ft
+            nult=2.5; %ultimate load factor from vibhram
+            Lf=(L)*3.28+4;% total length of fuselage in ft
             Sf=1.64;%fuselage wetted area in ft^2(22.38)
             Iramp = 1;% raming factor, 1 for no ramp
             mfuselage_pounds = 10.13*((0.001*GW(n)*2.20)^0.5719)*(nult^0.2238)*(Lf^0.5558)*(Sf^0.1534)*(Iramp^0.5242);% mass of fuselage using RTL method in pounds
@@ -248,7 +279,7 @@ for i=1:size(R,2)
             mcontrols=mcontrols_pounds*0.4535;%conversion from pound to kg
             melec=0.02*mempty;% electrical weights
 %-----------BATTERY-----------------------------------------------------------------------------------------------------%
-            sed = 0.936; %MJ/Kg(specific energy density of li-ion battery-260 Wh/Kg)
+            sed = 300*3600*1e-6; %MJ/Kg(specific energy density of li-ion battery-300 Wh/Kg)
             mbattery =energy_MJ(i,j) / sed;%kg
 %-----------FIXED--------------------------------------------------------------------------------------------------
             m_avionics=0.05*mempty;% mass of avionics
@@ -256,7 +287,7 @@ for i=1:size(R,2)
             m_instruments=0.4535*3.5*(GW(n)*2.2/1000)^1.3;%mass of instruments
             mfixed=m_avionics+manti_ice+m_instruments;% includes mass of avionics and mass of ribs+rods+payload support, anti ice and equipments
 %-----------NEW EMPTY WEIGHT---------------------------------------------------------------------------------------
-            mempty = m_rotor_group + mfuselage + mcontrols + melec + mlg + mfixed + m_transmission+ mbattery;
+            mempty = m_rotor_group + mfuselage + mcontrols + melec + mlg + mfixed + m_transmission;
 %-----------NEW GROSS WEIGHT----------------------------------------------------------------------------------------
             mgross(i,j) = mempty+mbattery+mpayload ;%new gross weight
             m=m+1;
