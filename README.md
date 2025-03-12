@@ -11,7 +11,7 @@ It contains the MATLAB scripts to estimate the weight using empirical (historica
   *Description: This script serves as the main entry point for running the weight and performance estimation calculations. Just play around with Radius, RPM and different hyperparameters for the aircraft and try to get the most optimal results.*
 
 - [Rotor_opt.mlx](./weight_performance/Rotor_opt.mlx)  
-  *Description: This script is BEMT with Prandtl tip loss function which calculates the forces and moments of our blade *
+  *Description: This script is BEMT with Prandtl tip loss function which calculates the forces and moments of our blade*
 
 - [NAC0012.mlx](./weight_performance/NAC0012.mlx)  
   *Description: Contains normal airfoil analysis Cl,Cd and alpha used by [Rotor_opt.mlx](./weight_performance/Rotor_opt.mlx) to perform calculations*
