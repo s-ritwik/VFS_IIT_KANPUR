@@ -28,7 +28,7 @@ thetatw = -12*pi/180;% twist rate
 RPM=1600;
 %Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
 %rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
-Vc=0.8;%climb speed in m/s
+Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
 S_br =12; %no of cells in series(same voltage considered for back rotor)
@@ -138,27 +138,75 @@ for i=1:size(R,2)
                 fprintf("done");
             end
             
+%-----------Auxillary power----------------------------------------------------------------------------------------
+            Power_servo=100;% assumption
+            Power_camera=25;%25W
+            aux_power=Power_servo+Power_camera;
+            aux_power=500; %assumpption 
+            energy_aux=aux_power*endurance;
+%-----------Total power and thrust in hover--------------------------------------------------------------------------- 
+            Power_total_hover(i,j)=power_h(i,j)+aux_power;
+            thrust_total(i,j)=thrust_h(i,j);
             Pclimb(i,j)=0;Pdescent(i,j)=0;
-            % [thrust_h(i,j),power_h(i,j),torque_h(i,j),theta_h(i,j),err(i,j),FM,BL]=BEMT(R_fr(i),Ct,Nb_fr,c_fr(i,j),Vtip_fr(j),a,GW(n),trans_loss,nondp,motor_efficiency,nondt,theta_0,electrical_loss);
-            %----Climb power---------------------------------------------
-            [Pclimb(i,j),Pdescent(i,j)]=climb(thrust_h(i,j)/2,rho,R(i),power_h(i,j)/2,Vc,Vd);
-            energy_ver(i,j)=Pclimb(i,j)*(climb_alt/(Vc*3.6)) +Pdescent(i,j)*(climb_alt/(Vd*3.6));%climb and descent power(in watt-hour)
+
+            %----Climb power------------------------for vc and vd
+            [Pclimb(i,j),Pdescent(i,j)]=climb(thrust_h(i,j)/N_rotors,rho,R(i),Power_total_hover(i,j)/N_rotors,Vc,Vd);
+            
             %------------calculation using MT(forward-flight)---------------------   
             % [Prange(i,j),Vrange(i,j),Pendu(i,j),Vendu(i,j)]=forwardflight(R_fr(i),Vtip_fr,thrust_h(i,j)/2,nondp,solidity_fr(i,j),h);%velocities are in kmph
             % energy_ff(i,j)=Pendu(i,j)*(range/Vendu(i,j))+Prange(i,j)*(range/Vrange(i,j));%in watt-hr
-%-----------Auxillary power----------------------------------------------------------------------------------------
-            Power_servo=6*10;%60W
-            Power_camera=25;%25W
-            aux_power=Power_servo+Power_camera;
-            energy_aux=aux_power*endurance;
-%-----------Total power and thrust in hover--------------------------------------------------------------------------- 
-            Power_total(i,j)=power_h(i,j)+Power_servo+Power_camera;
-            thrust_total(i,j)=thrust_h(i,j);
+
 %-----------Total energy and battery capacity required based on mission
-            energy(i,j) =(Power_total(i,j)*(endurance)+Pclimb(i,j)*0.5/60+Pdescent(i,j)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
+
+%-----------Section 2 : 15 seconds hover HIGE (i havent considered HIG yet)--------------------------------------------------------------
+            e_section_2(i,j)= Power_total_hover(i,j)*15; %watt (every power is in watt)
+
+%-----------Section 3 : vertical Climb from 0m to 60m @ 0.76m/s : ~79 seconds of climb--------------------------------------------------------------
+            e_section_3(i,j)=Pclimb(i,j)*60/Vc;
+
+%-----------Section 4 : 10 seconds hover HOGE--------------------------------------------------------------
+            e_section_4(i,j)=Power_total_hover(i,j)*10;
+
+%-----------Section 5 : 9deg climb--------------------------------------------------------------
+            
+
+%-----------Section 6 : Cruise @300m--------------------------------------------------------------
+
+            
+%-----------Section 7 : V descent @-7.6m/s from 300m to 30m--------------------------------------------------------------
+
+
+%-----------Section 8 : 30 seconds hover @30m--------------------------------------------------------------
+
+
+%-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
+%           Basically all the energy that you have left should be utitlised
+%           here to hover for max T9 seconds.
+
+
+%-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
+
+
+%-----------Section 11 : Cruise back approx 30km--------------------------------------------------------------
+
+
+%-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
+
+
+%-----------Section 13 : HOGE @60m for 10 seconds--------------------------------------------------------------
+
+
+%-----------Section 14 : Vertical descent @-0.5m/s from 60m to HIGE--------------------------------------------------------------
+            e_section_14(i,j)= Pdescent*60/Vd;
+
+%-----------Section 15 : HIGE for 15 seconds--------------------------------------------------------------
+            e_section_15(i,j)= Power_total_hover(i,j)*15;
+
+            
+            energy(i,j) =(Power_total_hover(i,j)*(endurance)+Pclimb(i,j)*0.5/60+Pdescent(i,j)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
             energy_MJ(i,j) = energy(i,j)*(3600)*10^(-6);%energy in mega -joules(MJ)
             C(i,j) =(((energy(i,j)/(No_of_battery*Nominal_volt))*1000)); %total battery capacity, all 2 batteries combined, in mAh=E(energy)/V(voltage), 3.6 volt for 1 cell;(17% for battery reserve)
-            flight_time_min(i,j)= (batt_reserve*No_of_battery*Nominal_volt*(C(i,j))/ Power_total(i,j))*60*10^(-3);%flight time in min
+            flight_time_min(i,j)= (batt_reserve*No_of_battery*Nominal_volt*(C(i,j))/ Power_total_hover(i,j))*60*10^(-3);%flight time in min
             % C_h(i,j)= ((Power_total(i,j)*(15/60))/(2*S_fr*3.6))*1000;
             % C_ver_climb(i,j)=(Pclimb(i,j)*(climb_alt/(Vc*3.6))/(2*S_fr*3.6))*1000;
             % C_ver_descent(i,j)=(Pdescent(i,j)*(climb_alt/(Vd*3.6))/(2*S_fr*3.6))*1000;
@@ -250,7 +298,7 @@ for i=1:size(R,2)
             V5(i,j) = torque_h(i,j);% total torque
             V6(i,j) = rpm(i,j);%rpm of blade
             V7(i,j)= Vtip/sqrt(1.4*287*T);%mach number
-            O1(i,j) = Power_total(i,j);%total hover power
+            O1(i,j) = Power_total_hover(i,j);%total hover power
             O2(i,j) = mgross(i,j);%gross weight
             O3(i,j) = energy(i,j);%total energy
             O4(i,j) = mbattery;%total battery mass
