@@ -4,7 +4,6 @@ clear all;
 h=10; %m
 range = .5; %km
 climb_alt=.1;%climb altitude in km
-endurance =50/60; %hrs(40 min)
 mpayload = 185; %(kg)payload 
 L_by_D=8; % estimated L/D ratio
 %% --------------------------------Atmosphere data-------------------------------------------------------------------%
@@ -25,6 +24,7 @@ N_rotors=8; %no of motors/rotors
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise=40;
+V_cruise_5=40;
 AR = 12;% aspect ratio of rotor
 theta0  =(0:0.01:30)*pi/180;% collective
 thetatw = -12;% twist rate
@@ -34,7 +34,7 @@ RPM=2000;
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
 S_br =12; %no of cells in series(same voltage considered for back rotor)
 %% --------------------------------Losses & Efficiencies-------------------------------------------------------------%
-trans_loss=1.02;%transmission losses(2%)
+trans_loss=1.05;%transmission losses(2%)
 electrical_loss=1.02;%electrical losses(2%)
 motor_efficiency=0.85;%motor efficiency(85%)
 %GR=5;%Gear ratio
@@ -169,11 +169,14 @@ for i=1:size(R,2)
             e_section_4(i,j)=Power_total_hover(i,j)*10;
 
 %-----------Section 5 : 9deg climb--------------------------------------------------------------
+            %Power=D*V_cruise_5 + W*sin(9)*V_cruise_5=L/L_D*V +Wsin(9)*V
+            %where L=Wcos(9)
+            power_5(i,j)=(GW(n)*cos(9)/L_by_D +GW(n)*sin())*V_cruise_5;
             e_section_5(i,j)=0;
 
 
 %-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
-            e_section_6(i,j)=GW(n)*9.8/L_by_D*30000; %Joules
+            e_section_6(i,j)=GW(n)*9.8/L_by_D*30000/motor_efficiency*trans_loss*electrical_loss; %Joules
             
 %-----------Section 7 : V descent @-7.6m/s from 300m to 30m (NO POWER)--------------------------------------------------------------
             e_section_7(i,j)=0;
@@ -191,7 +194,7 @@ for i=1:size(R,2)
 
 
 %-----------Section 11 : Cruise back approx 30km--------------------------------------------------------------
-            e_section_11(i,j)=GW(n)*9.8/L_by_D*30000; %Joules
+            e_section_11(i,j)=GW(n)*9.8/L_by_D*30000/motor_efficiency*trans_loss*electrical_loss; %Joules
 
 
 %-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
@@ -242,16 +245,16 @@ for i=1:size(R,2)
             mmotor = 0.5;%HK5-4030-355kv or Scorpion IM-8012-115kv
             mmotor= ((10^4.0499)*(Kv(i,j)^-0.5329))*10^-3;
             Imax_fr(i,j)=(Power_total_hover(i,j)/N_rotors)/(2*S_fr*3.6);% maximum current of one side
-            mesc_fr =0.8421*Imax_fr(i,j)*10^-3;%mass of esc(Thunder 300A 24S)
+            mesc_fr =2*0.8421*Imax_fr(i,j)*10^-3;%mass of esc(Thunder 300A 24S)
             m_rotor_group=N_rotors*(mrotor+mhub+mmotor+mesc_fr);%total front mass
 %-----------FUSELAGE------------------------------------------------------------------------------------------------%
             nult=2.5; %ultimate load factor from vibhram
             Lf=(L)*3.28+4;% total length of fuselage in ft
-            Sf=1.64;%fuselage wetted area in ft^2(22.38)
+            Sf=30;%fuselage wetted area in ft^2(22.38)
             Iramp = 1;% raming factor, 1 for no ramp
             mfuselage_pounds = 10.13*((0.001*GW(n)*2.20)^0.5719)*(nult^0.2238)*(Lf^0.5558)*(Sf^0.1534)*(Iramp^0.5242);% mass of fuselage using RTL method in pounds
             %mfuselage_pounds = 6.9*((GW(n)*2.2/1000)^0.49)*(Lf^0.61)*(Sf^0.25);
-            mfuselage=mfuselage_pounds*0.4535*128/100;% conversion from pound to kg
+            mfuselage=mfuselage_pounds*0.4535*3;% conversion from pound to kg
 %-----------TRANSMISSION-------------------------------------------------------------------------------------------------------
             HP_mr=(power_h(i,j)/2)/746;%maximum drive system horse power(1.2 times take off horse power)
             a_mr=1;%adjustment factor
@@ -263,7 +266,7 @@ for i=1:size(R,2)
             a_q=1;%coefficient reflecting excess torque
             %m_transmission_pounds=250*a_mr*((HP_mr/rpm(i,j))*(z_mr^0.25)*kt)^0.67;%weight of drive system in pounds(boeing vertol)
             %m_transmission=k_star*nmgb*(a_q*torque_h(i,j)/9.8)^0.8;% tishenko estimation of drive system(considering main gear box only)
-            m_transmission=0.2;%hard coded data from sabal 10kg m_transmission_pounds*0.4535;%conversion from pound to kg
+            m_transmission=0.2*N_rotors;%hard coded data from sabal 10kg m_transmission_pounds*0.4535;%conversion from pound to kg
 %-----------LANDING GEAR--------------------------------------------------------------------------------------------
             %mlg = 0.015 * GW(n);%boeing vertol formula
             mlg = 0.010 * GW(n);% tishenko formula

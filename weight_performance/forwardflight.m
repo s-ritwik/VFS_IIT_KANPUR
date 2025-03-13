@@ -52,7 +52,7 @@ for j=1:i
     check1=finalslope*Vforward(j)*18/5;
     compare = @(n1,n2,n_dcp) round(n1*10^n_dcp)==round(n2*10^n_dcp);
     if compare(check1,(Pft_ACC(j)),4)
-        Vrange = Vforward(j)*18/5;
+        Vrange = Vforward(j);
         Prange = check1;
         break;
     end
@@ -61,7 +61,7 @@ end
 Pendu=min((Pft_ACC(1:i-1)));
 for j=1:i
     if Pendu == (Pft_ACC(j))
-       Vendu = Vforward(j)*18/5;
+       Vendu = Vforward(j);
        break;
     end
 end
