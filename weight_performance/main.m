@@ -324,18 +324,17 @@ for i=1:size(R,2)
         save=true;
             if save==true
                        % Create a table with the variables
-            data = table({'Number of Blades', Nb; 'Radius', V1(i,j); 'TipSpeed', V2(i,j); 
+            data = table({'Number of Blades', Nb;'NumberOfRotors', N_rotors;  'Radius', V1(i,j); 'TipSpeed', V2(i,j); 
               'TotalThrust', V3(i,j); 'Extra thrust at hover', V4(i,j); 
-              'TotalTorque', V5(i,j); 'RPM', V6(i,j); 'MachNumber', V7(i,j); 
-              'TotalHoverPower', O1(i,j); 'GrossWeight', O2(i,j); 
-              'TotalEnergy', O3(i,j); 'TotalEngineMass', O4(i,j); 
+              'TotalTorque_per_motor Nm', V5(i,j); 'RPM', V6(i,j); 'MachNumber', V7(i,j); 
+              'TotalHoverPower Watt', O1(i,j); 'GrossWeight', O2(i,j); 
+              'TotalEnergy', O3(i,j); 'TotalBatteryMass', O4(i,j); 
               'CollectiveInDegrees', O5(i,j); 'PowerLoading', O6(i,j); 
               'DiskLoading', O7(i,j); 'MechanicalPower', O8(i,j); 
               'BatteryMass', mbattery; 'EmptyMass', mempty; 
-              'FuselageMass', mfuselage; 'VelocityMaxEndurance', Vendu; 
-              'NumberOfRotors', N_rotors; 'ClimbSpeed', Vc; 'DescentSpeed', Vd;
+              'FuselageMass', mfuselage;'ClimbSpeed', Vc; 'DescentSpeed', Vd;
               'CruiseVelocity', V_cruise; 'CruiseVelocity_Climb', V_cruise_5; 
-              'AspectRatio', AR; 'TwistRate', thetatw});
+              'AspectRatio', AR; 'TwistRate', thetatw; 'Max endurance Velocity', Vendu;'T9 time to be maximised for loiter',T9});
             % Prompt user for confirmation before saving
             
             prompt = 'Do you want to save the data to a file? Y/N: ';
