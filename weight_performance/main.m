@@ -1,4 +1,5 @@
 clc;    
+clear;
 clear all;
 %% --------------------------------Mission requirements--------------------------------------------------------------%
 h=10; %m
@@ -19,7 +20,7 @@ Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
 R=0.85;%0.7:0.05:1.1;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
-Nb = 2;%no of blades 
+Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
@@ -27,12 +28,17 @@ V_cruise=40;
 V_cruise_5=40;
 AR = 12;% aspect ratio of rotor
 theta0  =(0:0.01:30)*pi/180;% collective
-thetatw = -12;% twist rate
-RPM=2200;
+thetatw = -16;% twist rate
+RPM=3000;
 %Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
 %rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
 S_br =12; %no of cells in series(same voltage considered for back rotor)
+% ----------------------wing-----------------------------------
+AR_wing=12;% aspect ratio of wing
+taper_ratio=0.4; 
+tc_ratio = 0.25; % Thickness to chord ratio
+Cl_design=0.8;% Cl_design
 %% --------------------------------Losses & Efficiencies-------------------------------------------------------------%
 trans_loss=1.05;%transmission losses(2%)
 electrical_loss=1.02;%electrical losses(2%)
@@ -44,6 +50,10 @@ mu=1.09;
 %% --------------------------------Fixed weights----------------------------------------------------------------------
 %mmotor=1.74*4;%we are using 4 motors(Tmotor U15 2 KV80),total power=34.3 KW
 %mesc=0.558*4;%we are using 4 esc,(FLAME 200A 14S) 1 for each motor
+%% --------------------------------Constants----------------------------------------------------------------------
+
+kg_to_lb = 2.20462; % kg to pounds
+m_to_ft = 3.28084; % meters to feet
 
 
 %%                                 Design code
@@ -172,7 +182,7 @@ for i=1:size(R,2)
             %where L=Wcos(9)
             power_5(i,j)=(GW(n)*cos(degtorad(9))/L_by_D +GW(n)*sin(degtorad(9)))*V_cruise_5/motor_efficiency*trans_loss*electrical_loss;
             time_5(i,j)=(300-60)/V_cruise_5/sin(degtorad(9));
-            e_section_5(i,j)=power_5(i,j)*time_5;
+            e_section_5(i,j)=power_5(i,j)*time_5(i,j);
 
 
 %-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
@@ -199,14 +209,14 @@ for i=1:size(R,2)
 
 
 %-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
-            e_section_12=0;
+            e_section_12(i,j)=0;
 
 %-----------Section 13 : HOGE @60m for 10 seconds--------------------------------------------------------------
             e_section_13(i,j)=Power_total_hover(i,j)*10/motor_efficiency*trans_loss*electrical_loss;
 
 
 %-----------Section 14 : Vertical descent @-0.5m/s from 60m to HIGE--------------------------------------------------------------
-            e_section_14(i,j)= N_rotors*Pdescent*60/Vd/motor_efficiency*trans_loss*electrical_loss;
+            e_section_14(i,j)= N_rotors*Pdescent(i,j)*60/Vd/motor_efficiency*trans_loss*electrical_loss;
 
 %-----------Section 15 : HIGE for 15 seconds--------------------------------------------------------------
             e_section_15(i,j)= Power_total_hover(i,j)*15/motor_efficiency*trans_loss*electrical_loss;
@@ -282,18 +292,42 @@ for i=1:size(R,2)
             %mcontrols_pounds=20*(c_fr(i,j)*3.28*(R_fr(i)*3.28*mrotor_fr_pounds*10^-3)^0.5)^1.1;
             mcontrols=mcontrols_pounds*0.4535;%conversion from pound to kg
             melec=0.02*mempty;% electrical weights
-%-----------BATTERY-----------------------------------------------------------------------------------------------------%
-            sed = 250*3600*1e-6; %MJ/Kg(specific energy density of li-ion battery-300 Wh/Kg)
-            mbattery =energy_MJ(i,j) / sed;%kg
+%-----------Tilt Mechanism-----------------------------------------------------------------------------------------------------%
+            
+
+%-----------Wings Weight ref:https://core.ac.uk/download/pdf/12983145.pdf-----------------------------------------------------------------------------------------------------%
+            % Configuration is tandem wing 
+            
+            S=1/2*GW(n)*g*2/(Cl_design*V_cruise^2*rho); %wing area for a particular Cl
+            b=sqrt(AR_wing*S);
+            root_chord=S/(1+taper_ratio)*2/b;
+
+            Ngust = (1 + 6.3 * AR_wing * S * V_cruise * m_to_ft^3) / (GW(n) * kg_to_lb) / (2 + AR_wing)/6;
+            Nmanu = max(2.5, 2.1 + 10900 / (4530 + GW(n) * kg_to_lb));
+            Ngust_ult = 1.5 * Ngust;
+            Nmanu_ult = 1.65 * Nmanu;
+            Nult = max(Nmanu_ult, Ngust_ult);
+            % Wing Weight (converted to metric)
+            m_wing = 0.6*(4.22 * S * m_to_ft^2 + 1.642 * (10^-6) * Nult * (b * m_to_ft)^3 * (1 + 2 * taper_ratio) * ...
+                      (GW(n) * (mempty) * kg_to_lb^2)^0.5 / (tc_ratio * S * m_to_ft^2 * (1 + taper_ratio))) / kg_to_lb*.8;
+            
+            % Fuselage Weight (converted to metric)
+            % W_fuselage = 0.0737 * (2 * (D_fuselage * m_to_ft) * (v_cruise * m_to_ft)^0.338 * (L_fuselage * m_to_ft)^0.857 * ...
+            %               (GW(n) * kg_to_lb * Nult)^0.286)^1.1 / kg_to_lb;
+%-----------HYDROGEN FUEL CELL-----------------------------------------------------------------------------------------------------%
+            sed = 300*3600*1e-6; %MJ/Kg(specific energy density of an efficient Hydrogen cell)
+            m_hydrogen =energy_MJ(i,j) / sed;%kg
+            mfuel_system=30;%Power_total_hover(i,j)/0.15/1000;
+            mfuel_cell(i,j)= mfuel_system+ m_hydrogen;
 %-----------FIXED--------------------------------------------------------------------------------------------------
             m_avionics=0.05*mempty;% mass of avionics
             manti_ice=0;%8*(GW(n)/1000);%mass of anti ice equipments
             m_instruments=0.4535*3.5*(GW(n)*2.2/1000)^1.3;%mass of instruments
             mfixed=m_avionics+manti_ice+m_instruments;% includes mass of avionics and mass of ribs+rods+payload support, anti ice and equipments
 %-----------NEW EMPTY WEIGHT---------------------------------------------------------------------------------------
-            mempty = m_rotor_group + mfuselage + mcontrols + melec + mlg + mfixed + m_transmission;
+            mempty = m_rotor_group + mfuselage + mcontrols + melec + mlg + mfixed + m_transmission+ m_wing ;
 %-----------NEW GROSS WEIGHT----------------------------------------------------------------------------------------
-            mgross(i,j) = mempty+mbattery+mpayload ;%new gross weight
+            mgross(i,j) = mempty+mfuel_cell(i,j)+mpayload ;%new gross weight
             m=m+1;
             n=n+1;
             GW(n) = mgross(i,j);
@@ -314,7 +348,7 @@ for i=1:size(R,2)
             O1(i,j) = Power_total_hover(i,j);%total hover power
             O2(i,j) = mgross(i,j);%gross weight
             O3(i,j) = energy(i,j);%total energy
-            O4(i,j) = mbattery;%total battery mass
+            O4(i,j) = mfuel_cell(i,j);%total battery mass
             O5(i,j) = theta_h(i,j)*180/pi;%collective in degrees
             O6(i,j) = thrust_total(i,j)./power_h(i,j);%power loading(N/W)
             O7(i,j) = (thrust_total(i,j)/2)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
@@ -331,7 +365,7 @@ for i=1:size(R,2)
               'TotalEnergy', O3(i,j); 'TotalBatteryMass', O4(i,j); 
               'CollectiveInDegrees', O5(i,j); 'PowerLoading', O6(i,j); 
               'DiskLoading', O7(i,j); 'MechanicalPower', O8(i,j); 
-              'BatteryMass', mbattery; 'EmptyMass', mempty; 
+              'BatteryMass', mfuel_cell; 'EmptyMass', mempty; 
               'FuselageMass', mfuselage;'ClimbSpeed', Vc; 'DescentSpeed', Vd;
               'CruiseVelocity', V_cruise; 'CruiseVelocity_Climb', V_cruise_5; 
               'AspectRatio', AR; 'TwistRate', thetatw; 'Max endurance Velocity', Vendu;'T9 time to be maximised for loiter',T9});
@@ -428,20 +462,68 @@ end
 % ylabel('RPM');
 % zlabel('Disc Loading');
 % grid on;
-%%
-%testing rotor_opt
-% clc;
-%     R_fr_test=0.75;
-%     rpm_test=1200;
-%     omega_test=rpm_test*2*pi/60;
-%     vtip_test=omega_test*R_fr_test;
-%     theta_test=8*pi/180;
-%             [thrust_1_opt,power_1_opt,torque_1_opt,theta_1_opt,err_1_opt,FM_opt,BL_opt,mechpower_opt]=Rotor_opt(R_fr_test,0.07,thetatw,rpm_test,Nb_fr,2,23,trans_loss, ...
-%                 nondp,motor_efficiency,nondt,theta_test,electrical_loss,rho);
+%% Plots
+
+% % Create mesh grids for R and RPM
+% [R_mesh, RPM_mesh] = meshgrid(R, RPM);
 % 
-%             [thrust_2_opt,power_2_opt,torque_2_opt,theta_2_opt,err_2_opt,FM_opt_2,BL_opt_2,mechpower_opt_2]=Rotor_opt(R_fr_test,0.07,thetatw,rpm_test,Nb_fr,1,25,trans_loss, ...
-%                 nondp,motor_efficiency,nondt,theta_test,electrical_loss,rho);
+% % Plot 1: Gross Weight (mgross)
+% figure;
+% surf(R_mesh, RPM_mesh, mgross');
+% xlabel('Rotor Radius (m)');
+% ylabel('Rotor RPM');
+% zlabel('Gross Weight (kg)');
+% title('Gross Weight vs. Rotor Radius and RPM');
+% colorbar;
+% shading interp;
+% grid on;
 % 
-%             [thrust_1,power_1,torque_1,theta_1,err_1,FM,BL]=BEMT(R_fr_test,Ct,Nb_fr,0.07,vtip_test,a,25,trans_loss, ...
-%                 nondp,motor_efficiency,nondt,theta_test,electrical_loss,cl_alpha,Cd);
-%             fprintf("thrust from opt code: %4.3f power:%4.3f \n thrust from normal bemt: %4.3f power:%4.3f",thrust_1_opt,power_1_opt,thrust_2_opt,power_2_opt);
+% [R_mesh1, RPM_mesh1] = meshgrid(R, RPM);
+% 
+% % Plot 2: Battery Mass (mbattery)
+% figure;
+% surf(R_mesh1, RPM_mesh1, mfuel_cell');
+% xlabel('Rotor Radius (m)');
+% ylabel('Rotor RPM');
+% zlabel('Battery Mass (kg)');
+% title('Battery Mass vs. Rotor Radius and RPM');
+% colorbar;
+% shading interp;
+% grid on;
+% 
+% % Plot 3: Hover Power (Power_total_hover)
+% [R_mesh2, RPM_mesh2] = meshgrid(R, RPM);
+% 
+% figure;
+% surf(R_mesh2, RPM_mesh2, Power_total_hover');
+% xlabel('Rotor Radius (m)');
+% ylabel('Rotor RPM');
+% zlabel('Total Hover Power (W)');
+% title('Hover Power vs. Rotor Radius and RPM');
+% colorbar;
+% shading interp;
+% grid on;
+% % torque
+% [R_mesh3, RPM_mesh3] = meshgrid(R, RPM);
+% 
+% figure;
+% surf(R_mesh3, RPM_mesh3, V5');
+% xlabel('Rotor Radius (m)');
+% ylabel('Rotor RPM');
+% zlabel('Torque required by Motor (Nm)');
+% title('Torque vs. Rotor Radius and RPM');
+% colorbar;
+% shading interp;
+% grid on;
+% % theta0
+% [R_mesh4, RPM_mesh4] = meshgrid(R, RPM);
+% 
+% figure;
+% surf(R_mesh4, RPM_mesh4, O5');
+% xlabel('Rotor Radius (m)');
+% ylabel('Rotor RPM');
+% zlabel('Collective (degrees)');
+% title('Collective vs. Rotor Radius and RPM');
+% colorbar;
+% shading interp;
+% grid on;
