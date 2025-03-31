@@ -1,0 +1,51 @@
+% rotor_cq_ct_plot.m
+R=0.85;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
+Nb = 2;%no of blades 
+N_rotors=8; %no of motors/rotors
+trans_loss=1.05;%transmission losses(2%)
+electrical_loss=1.02;%electrical losses(2%)
+motor_efficiency=0.85;%motor efficiency(85%)
+AR=12;
+c =R/AR;
+% Constants
+rho = 1.225;             % Air density (kg/m^3)
+twist = -16;               % No twist
+rpm = 4000;              % Rotor RPM                 % Number of blades
+GW = 50;                  % Gross weight in kg
+% Derived quantities
+omega = rpm * 2 * pi / 60;     % Angular velocity (rad/s)
+A = pi * R^2;                  % Disk area
+nondt=rho*A*(omega*R)^2;%non-dimentional making terms for thrust
+nondp=rho*A*(omega*R)^3;%non-dimentional making terms for pressure
+% Sweep over theta_0 (collective pitch) in radians
+theta_0_array = linspace(15, 30, 50) * pi / 180;  % From 5° to 20°
+
+% Initialize arrays
+cq_array = zeros(size(theta_0_array));
+ct_array = zeros(size(theta_0_array));
+sigma=(Nb*c*(R-0.2*R))/(pi*R.^2);
+
+% Loop over theta_0
+for i = 1:length(theta_0_array)
+    theta_0 = theta_0_array(i);
+    
+    [Thrust, Power, torque_h, theta_h, err, FM, BL, power_h_mech, CP, CT] = ...
+        Rotor_opt(R, c, twist, rpm, Nb, 3, GW, trans_loss, ...
+                  nondp, motor_efficiency, nondt, theta_0, ...
+                  electrical_loss, rho, N_rotors);
+    
+    % Torque coefficient CQ
+    cq = torque_h / (0.5 * rho * A * R^3 * omega^2);
+    ct = Thrust   / (0.5 * rho * A * R^2 * omega^2);
+
+    cq_array(i) = cq;
+    ct_array(i) = ct;
+end
+
+% Plot
+figure;
+plot(cq_array, ct_array, 'b-o', 'LineWidth', 1.5);
+xlabel('Torque Coefficient C_Q');
+ylabel('Thrust Coefficient C_T');
+title('Rotor Performance Curve');
+grid on;

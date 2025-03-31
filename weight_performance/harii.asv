@@ -19,17 +19,17 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=0.85;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
+R=3.81;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
 Nb = 2;%no of blades 
 N_rotors=8; %no of motors/rotors
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise=40;
 V_cruise_5=40;
-AR = 12;% aspect ratio of rotor
+AR = 6.7;% aspect ratio of rotor
 theta0  =(5:0.01:30)*pi/180;% collective
 thetatw = -0;% twist rate
-RPM=3000;
+RPM=300;
 %Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
 %rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
@@ -67,6 +67,7 @@ for i=1:size(R,2)
 %-------ROTOR PARAMETERS--------------------------------------------------------------------------------------------------%
         c(i,j) =R(i)/AR;%chord
         omega(i,j) = Vtip/R(i);%angular velocity
+        tip_speed= omega(i,j)*R*3.28084 %ft/s
         solidity(i,j) =(Nb*c(i,j)*(R(i)-0.2*R(i)))/(pi*R(i).^2);%solidity     
 %-------DISTANCE BETWEEN ROTORS------------------------------------------------------------------------------------
         L = R(i)+R(i)+(2*R(i)/3);%center to center distance,clearance taken as diameter/3
@@ -107,9 +108,9 @@ for i=1:size(R,2)
                 %_____________________________AIR=1 for naca4412 AND AIR=2
                 %FOR NACA 653618
                 % Call the Rotor_opt function
-
+    
                 %____________________________ROTOR OPT__________
-                [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
+                [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT,CQ] = ...
                     Rotor_opt(R(i), c(i,j), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                     %2 is for airfoil
                 %------------BEMT------------------------------------
@@ -353,7 +354,7 @@ for i=1:size(R,2)
             O4(i,j) = mfuel_cell(i,j);%total battery mass
             O5(i,j) = theta_h(i,j)*180/pi;%collective in degrees
             O6(i,j) = thrust_total(i,j)./power_h(i,j);%power loading(N/W)
-            O7(i,j) = (thrust_total(i,j)/2)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
+            O7(i,j) = (thrust_total(i,j)/Nb)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
             O8(i,j) = power_mech(i,j);
         end
         

@@ -19,17 +19,17 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=0.85;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
+R=3.81;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
 Nb = 2;%no of blades 
-N_rotors=8; %no of motors/rotors
+N_rotors=1; %no of motors/rotors
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise=40;
 V_cruise_5=40;
-AR = 12;% aspect ratio of rotor
+AR = 6.7;% aspect ratio of rotor
 theta0  =(5:0.01:30)*pi/180;% collective
 thetatw = -0;% twist rate
-RPM=3000;
+RPM=300;
 %Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
 %rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
@@ -57,19 +57,20 @@ m_to_ft = 3.28084; % meters to feet
 
 
 %%                                 Design code
-for i=1:size(R,2)
+for i=1:1:100
     
     for j=1:size(RPM,2)
         
         solution_check=1;
-        Vtip=(RPM(j)).*(2*pi.*R(i)/60);
-        fprintf('%4.3f RPM- %4.3f radius-%4.3f vtip:%4.3f \n',Nb, RPM(j), R(i), Vtip);
+        Vtip=(RPM(j)).*(2*pi.*R/60);
+        fprintf('%4.3f RPM- %4.3f radius-%4.3f vtip:%4.3f \n',Nb, RPM(j), R, Vtip);
 %-------ROTOR PARAMETERS--------------------------------------------------------------------------------------------------%
-        c(i,j) =R(i)/AR;%chord
-        omega(i,j) = Vtip/R(i);%angular velocity
-        solidity(i,j) =(Nb*c(i,j)*(R(i)-0.2*R(i)))/(pi*R(i).^2);%solidity     
+        c(i,j) =R/AR;%chord
+        omega(i,j) = Vtip/R;%angular velocity
+        tip_speed= omega(i,j)*R*3.28084 %ft/s
+        solidity(i,j) =(Nb*c(i,j)*(R-0.2*R))/(pi*R.^2);%solidity     
 %-------DISTANCE BETWEEN ROTORS------------------------------------------------------------------------------------
-        L = R(i)+R(i)+(2*R(i)/3);%center to center distance,clearance taken as diameter/3
+        L = R+R+(2*R/3);%center to center distance,clearance taken as diameter/3
 %-------WEIGHT INITIALIZATION-----------------------------------------------------------------------------------------%
         m=1;%first index initialization
         n=2;% second index initialization
@@ -77,9 +78,9 @@ for i=1:size(R,2)
         mempty =24;%empty weight(kg)
         GW(n) = mempty+mpayload;%total gross weight
         pre_weight=GW(n);%intial gross weight assumption
-        A=pi*(R(i)^2);%area of disk(for both front and back it will be same)
-        nondt=rho*A*(omega(i,j)*R(i))^2;%non-dimentional making terms for thrust
-        nondp=rho*A*(omega(i,j)*R(i))^3;%non-dimentional making terms for pressure
+        A=pi*(R^2);%area of disk(for both front and back it will be same)
+        nondt=rho*A*(omega(i,j)*R)^2;%non-dimentional making terms for thrust
+        nondp=rho*A*(omega(i,j)*R)^3;%non-dimentional making terms for pressure
         error=100;%arbitrary value of error for initialization
         batt_reserve=0.85;% 15% battery reserve
         No_of_battery=2;% no of batteries each side
@@ -107,10 +108,10 @@ for i=1:size(R,2)
                 %_____________________________AIR=1 for naca4412 AND AIR=2
                 %FOR NACA 653618
                 % Call the Rotor_opt function
-
+    
                 %____________________________ROTOR OPT__________
-                [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
-                    Rotor_opt(R(i), c(i,j), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
+                [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT,CQ] = ...
+                    Rotor_opt(R, c(i,j), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                     %2 is for airfoil
                 %------------BEMT------------------------------------
                  % [thrust_1,power_1,torque_1,theta_1,err_1,FM,BL,mech_power]=BEMT(R_fr(i),Ct,Nb_fr,c_fr(i,j),Vtip_fr(j),a,GW(n),trans_loss,nondp,motor_efficiency,nondt,theta0(k_mid),electrical_loss);
@@ -162,10 +163,10 @@ for i=1:size(R,2)
             Pclimb(i,j)=0;Pdescent(i,j)=0;
 
             %----Climb power------------------------for vc and vd
-            [Pclimb(i,j),Pdescent(i,j)]=climb(thrust_h(i,j)/N_rotors,rho,R(i),Power_total_hover(i,j)/N_rotors,Vc,Vd);
+            [Pclimb(i,j),Pdescent(i,j)]=climb(thrust_h(i,j)/N_rotors,rho,R,Power_total_hover(i,j)/N_rotors,Vc,Vd);
             
             %------------calculation using MT(forward-flight)---------------------   
-            [Prange(i,j),Vrange(i,j),Pendu(i,j),Vendu(i,j)]=forwardflight(R(i),Vtip,thrust_h(i,j)/N_rotors,nondp,solidity(i,j),h);%velocities are in kmph
+            [Prange(i,j),Vrange(i,j),Pendu(i,j),Vendu(i,j)]=forwardflight(R,Vtip,thrust_h(i,j)/N_rotors,nondp,solidity(i,j),h);%velocities are in kmph
             % energy_ff(i,j)=Pendu(i,j)*(range/Vendu(i,j))+Prange(i,j)*(range/Vrange(i,j));%in watt-hr
 
 %-----------Total energy and battery capacity required based on mission
@@ -242,94 +243,8 @@ for i=1:size(R,2)
             % flight_time_min(i,j)=(batt_reserve)*(No_of_battery)*(Nominal_volt)*(60)*(10^-3)*((C_h(i,j)/Power_total(i,j))+ C_ver_climb(i,j)/Pclimb(i,j) + C_ver_descent(i,j)/Pdescent(i,j) +
             % C_ff_endu(i,j)/Pendu(i,j) + C_ff_range(i,j)/Prange(i,j)+ C_aux/aux_power);
 
+            mgross(i,j) = 12.2*pi*R^2 *i/100;%new gross weight
 
-
-%-----------WEIGHT ESTIMATION------------------------------------------------------------------------------------------
-%-----------ROTOR GROUP----------------------------------------------------------------------------------------------%
-            mrotor_pounds=(0.02638*(Nb^0.6826)*((c(i,j)*3.28)^0.9952)*((R(i)*3.28)^1.3507)*((Vtip*3.28)^0.6563)*(mu^2.5231))/Nb;% mass of rotor blades(in pounds)
-            %mrotor_fr_prouty_pounds=0.026*(Nb_fr^0.66)*(c_fr(i,j)*3.28)*((R_fr(i)*3.28)^1.3)*((Vtip_fr(j)*3.28)^0.67);%prouty blade estimation
-            mrotor=mrotor_pounds*0.4535;% mass of rotor in kg
-            % mrotor=0.52;
-            mhub_pounds=0.0135*(mempty*2.2)*(R(i)*3.28)^0.42;% mass of hub and hinge in pounds
-            mhub=mhub_pounds*0.4535;%mass ofhub&hinge in kg
-            mhub=0;
-            rpm(i,j)=RPM(j);
-            Kv(i,j) = rpm(i,j)/(2*S_fr*3.6);% rpm per volt of one side
-            mmotor = 0.5;%HK5-4030-355kv or Scorpion IM-8012-115kv
-            mmotor= ((10^4.0499)*(Kv(i,j)^-0.5329))*10^-3;
-            Imax_fr(i,j)=(Power_total_hover(i,j)/N_rotors)/(2*S_fr*3.6);% maximum current of one side
-            mesc_fr =2*0.8421*Imax_fr(i,j)*10^-3;%mass of esc(Thunder 300A 24S)
-            m_rotor_group=N_rotors*(mrotor+mhub+mmotor+mesc_fr);%total front mass
-%-----------FUSELAGE------------------------------------------------------------------------------------------------%
-            nult=2.5; %ultimate load factor from vibhram
-            Lf=(L)*3.28+4;% total length of fuselage in ft
-            Sf=30;%fuselage wetted area in ft^2(22.38)
-            Iramp = 1;% raming factor, 1 for no ramp
-            mfuselage_pounds = 10.13*((0.001*GW(n)*2.20)^0.5719)*(nult^0.2238)*(Lf^0.5558)*(Sf^0.1534)*(Iramp^0.5242);% mass of fuselage using RTL method in pounds
-            %mfuselage_pounds = 6.9*((GW(n)*2.2/1000)^0.49)*(Lf^0.61)*(Sf^0.25);
-            mfuselage=mfuselage_pounds*0.4535*3;% conversion from pound to kg
-%-----------TRANSMISSION-------------------------------------------------------------------------------------------------------
-            HP_mr=(power_h(i,j)/2)/746;%maximum drive system horse power(1.2 times take off horse power)
-            a_mr=1;%adjustment factor
-            %rpm(i,j)=Vtip_fr(j)*60/(2*pi*R_fr(i));
-            z_mr=1;% number of stages in drive system
-            kt=1.3;%configuration factor
-            k_star=0.35;%weight coefficient value of CH-47C
-            nmgb=1;% number of main gear boxes
-            a_q=1;%coefficient reflecting excess torque
-            %m_transmission_pounds=250*a_mr*((HP_mr/rpm(i,j))*(z_mr^0.25)*kt)^0.67;%weight of drive system in pounds(boeing vertol)
-            %m_transmission=k_star*nmgb*(a_q*torque_h(i,j)/9.8)^0.8;% tishenko estimation of drive system(considering main gear box only)
-            m_transmission=0.2*N_rotors;%hard coded data from sabal 10kg m_transmission_pounds*0.4535;%conversion from pound to kg
-%-----------LANDING GEAR--------------------------------------------------------------------------------------------
-            %mlg = 0.015 * GW(n);%boeing vertol formula
-            mlg = 0.010 * GW(n);% tishenko formula
-%-----------CONTROLS AND ELECTRICALS-------------------------------------------------------------------------------
-            Fcb=2;%1= mechanical type, 2=boosted type
-            Fcp=1;%Flight control ballastic tolerance 1=no, 2=yes
-            kmrc=26;
-            %mcontrols_pounds=0.1657*(Fcb^1.3696)*((c_fr(i,j)*3.28)^0.4481)*(Fcp^0.4469)*((GW(n)*2.20)^0.6865);% weight of controls using RTL method in pounds
-            %mcontrols_pounds=36*Nb_fr*((c_fr*3.28)^2.2)*((Vtip_fr*3.28/1000)^3.2);% prouty formula
-            mcontrols_pounds=kmrc*((c(i,j)*3.28)*((R(i)*3.28)*Nb*(mrotor*2.2)*10^-3)^0.5)^1.1;% weight of rotor controls plus main actuators(boeing vertol formula)
-            %mcontrols_pounds=30*((10^-3)*GW(n)*2.2/2)^0.84;% boeing vertol formula
-            %mcontrols_pounds=20*(c_fr(i,j)*3.28*(R_fr(i)*3.28*mrotor_fr_pounds*10^-3)^0.5)^1.1;
-            mcontrols=mcontrols_pounds*0.4535;%conversion from pound to kg
-            melec=0.02*mempty;% electrical weights
-%-----------Tilt Mechanism-----------------------------------------------------------------------------------------------------%
-            
-
-%-----------Wings Weight ref:https://core.ac.uk/download/pdf/12983145.pdf-----------------------------------------------------------------------------------------------------%
-            % Configuration is tandem wing 
-            
-            S=1/2*GW(n)*g*2/(Cl_design*V_cruise^2*rho); %wing area for a particular Cl
-            b=sqrt(AR_wing*S);
-            root_chord=S/(1+taper_ratio)*2/b;
-
-            Ngust = (1 + 6.3 * AR_wing * S * V_cruise * m_to_ft^3) / (GW(n) * kg_to_lb) / (2 + AR_wing)/6;
-            Nmanu = max(2.5, 2.1 + 10900 / (4530 + GW(n) * kg_to_lb));
-            Ngust_ult = 1.5 * Ngust;
-            Nmanu_ult = 1.65 * Nmanu;
-            Nult = max(Nmanu_ult, Ngust_ult);
-            % Wing Weight (converted to metric)
-            m_wing = 0.6*(4.22 * S * m_to_ft^2 + 1.642 * (10^-6) * Nult * (b * m_to_ft)^3 * (1 + 2 * taper_ratio) * ...
-                      (GW(n) * (mempty) * kg_to_lb^2)^0.5 / (tc_ratio * S * m_to_ft^2 * (1 + taper_ratio))) / kg_to_lb*.8;
-            
-            % Fuselage Weight (converted to metric)
-            % W_fuselage = 0.0737 * (2 * (D_fuselage * m_to_ft) * (v_cruise * m_to_ft)^0.338 * (L_fuselage * m_to_ft)^0.857 * ...
-            %               (GW(n) * kg_to_lb * Nult)^0.286)^1.1 / kg_to_lb;
-%-----------HYDROGEN FUEL CELL-----------------------------------------------------------------------------------------------------%
-            sed = 300*3600*1e-6; %MJ/Kg(specific energy density of an efficient Hydrogen cell)
-            m_hydrogen =energy_MJ(i,j) / sed;%kg
-            mfuel_system=30;%Power_total_hover(i,j)/0.15/1000;
-            mfuel_cell(i,j)= mfuel_system+ m_hydrogen;
-%-----------FIXED--------------------------------------------------------------------------------------------------
-            m_avionics=0.05*mempty;% mass of avionics
-            manti_ice=0;%8*(GW(n)/1000);%mass of anti ice equipments
-            m_instruments=0.4535*3.5*(GW(n)*2.2/1000)^1.3;%mass of instruments
-            mfixed=m_avionics+manti_ice+m_instruments;% includes mass of avionics and mass of ribs+rods+payload support, anti ice and equipments
-%-----------NEW EMPTY WEIGHT---------------------------------------------------------------------------------------
-            mempty = m_rotor_group + mfuselage + mcontrols + melec + mlg + mfixed + m_transmission+ m_wing ;
-%-----------NEW GROSS WEIGHT----------------------------------------------------------------------------------------
-            mgross(i,j) = mempty+mfuel_cell(i,j)+mpayload ;%new gross weight
             m=m+1;
             n=n+1;
             GW(n) = mgross(i,j);
@@ -339,58 +254,26 @@ for i=1:size(R,2)
             %     power_final(i,j)=power_1(count); 
             %     thrust_final(i,j)=
         end
-        if (solution_check==1)
-            V1(i,j) = R(i);% radius
-            V2(i,j) = Vtip;%tip speed
-            V3(i,j) = thrust_total(i,j);%total thrust
-            V4(i,j) = err(i,j);%error margin
-            V5(i,j) = torque_h(i,j);% total torque
-            V6(i,j) = rpm(i,j);%rpm of blade
-            V7(i,j)= Vtip/sqrt(1.4*287*T);%mach number
-            O1(i,j) = Power_total_hover(i,j);%total hover power
-            O2(i,j) = mgross(i,j);%gross weight
-            O3(i,j) = energy(i,j);%total energy
-            O4(i,j) = mfuel_cell(i,j);%total battery mass
-            O5(i,j) = theta_h(i,j)*180/pi;%collective in degrees
-            O6(i,j) = thrust_total(i,j)./power_h(i,j);%power loading(N/W)
-            O7(i,j) = (thrust_total(i,j)/2)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
-            O8(i,j) = power_mech(i,j);
-        end
+        % if (solution_check==1)
+        %     V1(i,j) = R;% radius
+        %     V2(i,j) = Vtip;%tip speed
+        %     V3(i,j) = thrust_total(i,j);%total thrust
+        %     V4(i,j) = err(i,j);%error margin
+        %     V5(i,j) = torque_h(i,j);% total torque
+        %     V6(i,j) = rpm(i,j);%rpm of blade
+        %     V7(i,j)= Vtip/sqrt(1.4*287*T);%mach number
+        %     O1(i,j) = Power_total_hover(i,j);%total hover power
+        %     O2(i,j) = mgross(i,j);%gross weight
+        %     O3(i,j) = energy(i,j);%total energy
+        %     O4(i,j) = mfuel_cell(i,j);%total battery mass
+        %     O5(i,j) = theta_h(i,j)*180/pi;%collective in degrees
+        %     O6(i,j) = thrust_total(i,j)./power_h(i,j);%power loading(N/W)
+        %     O7(i,j) = (thrust_total(i,j)/Nb)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
+        %     O8(i,j) = power_mech(i,j);
+        % end
         
-        save=false;
-            if save==true
-                       % Create a table with the variables
-            data = table({'Number of Blades', Nb;'NumberOfRotors', N_rotors;  'Radius', V1(i,j); 'TipSpeed', V2(i,j); 
-              'TotalThrust', V3(i,j); 'Extra thrust at hover', V4(i,j); 
-              'TotalTorque_per_motor Nm', V5(i,j); 'RPM', V6(i,j); 'MachNumber', V7(i,j); 
-              'TotalHoverPower Watt', O1(i,j); 'GrossWeight', O2(i,j); 
-              'TotalEnergy', O3(i,j); 'TotalBatteryMass', O4(i,j); 
-              'CollectiveInDegrees', O5(i,j); 'PowerLoading', O6(i,j); 
-              'DiskLoading', O7(i,j); 'MechanicalPower', O8(i,j); 
-              'BatteryMass', mfuel_cell; 'EmptyMass', mempty; 
-              'FuselageMass', mfuselage;'ClimbSpeed', Vc; 'DescentSpeed', Vd;
-              'CruiseVelocity', V_cruise; 'CruiseVelocity_Climb', V_cruise_5; 
-              'AspectRatio', AR; 'TwistRate', thetatw; 'Max endurance Velocity', Vendu;'T9 time to be maximised for loiter',T9});
-            % Prompt user for confirmation before saving
+        
             
-            prompt = 'Do you want to save the data to a file? Y/N: ';
-            str = input(prompt, 's');
-            
-            
-            if strcmpi(str, 'Y')
-                % Ask for file name
-                [file, path] = uiputfile('*.csv', 'Save data as');
-                if ischar(file)
-                    % Save the table to a CSV file
-                    writetable(data, fullfile(path, file));
-                    fprintf('Data saved to %s\n', fullfile(path, file));
-                else
-                    fprintf('File save canceled.\n');
-                end
-            else
-                fprintf('Data not saved.\n');
-            end
-            end
 
 
     end
