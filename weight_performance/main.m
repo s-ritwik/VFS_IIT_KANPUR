@@ -20,7 +20,7 @@ Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
 R=0.8:0.05:1.6;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
-RPM=2500:500:8000;
+RPM= 2500:500:8000;
 %%
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
