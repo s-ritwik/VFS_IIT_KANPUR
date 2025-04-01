@@ -19,17 +19,23 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=0.85;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
-Nb = 2;%no of blades 
+R=0.8:0.05:1.6;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
+RPM=2500:500:8000;
+%%
+Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise=40;
 V_cruise_5=40;
+
+% --------------section 9 where you have to maximise T9---------------------------
+T9=0.5*60*60; %1 hr
+V_endu_cruise=30;
+
 AR = 12;% aspect ratio of rotor
-theta0  =(5:0.01:30)*pi/180;% collective
-thetatw = -0;% twist rate
-RPM=3000;
+theta0  =(10:0.01:30)*pi/180;% collective
+thetatw = -16;% twist rate
 %Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
 %rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
 S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
@@ -85,7 +91,7 @@ for i=1:size(R,2)
         No_of_battery=2;% no of batteries each side
         fprintf(".");
         Nominal_volt=3.6*S_fr; %Nominal voltage of the entire one battery(cells in series)
-        while( error>0.01 )
+        while( error>0.2 )
             count_k=0;
 %-----------Thrust and Power calculation using momentum theory(hover)-----------------------------------------------------
             Ct=GW(n)*9.81/nondt;%considering thrust equal to weight for hover
@@ -109,12 +115,16 @@ for i=1:size(R,2)
                 % Call the Rotor_opt function
 
                 %____________________________ROTOR OPT__________
+                try
+
                 [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
                     Rotor_opt(R(i), c(i,j), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                     %2 is for airfoil
                 %------------BEMT------------------------------------
                  % [thrust_1,power_1,torque_1,theta_1,err_1,FM,BL,mech_power]=BEMT(R_fr(i),Ct,Nb_fr,c_fr(i,j),Vtip_fr(j),a,GW(n),trans_loss,nondp,motor_efficiency,nondt,theta0(k_mid),electrical_loss);
-
+                catch
+                    continue
+                end
 
 
                 % Check the error condition
@@ -162,11 +172,36 @@ for i=1:size(R,2)
             Pclimb(i,j)=0;Pdescent(i,j)=0;
 
             %----Climb power------------------------for vc and vd
+            try
             [Pclimb(i,j),Pdescent(i,j)]=climb(thrust_h(i,j)/N_rotors,rho,R(i),Power_total_hover(i,j)/N_rotors,Vc,Vd);
-            
+            catch
+                Pclimb(i,j)=0;
+                Pdescent(i,j)=0
+                continue;  % Skip to next (j) iteration
+
+            end
             %------------calculation using MT(forward-flight)---------------------   
-            [Prange(i,j),Vrange(i,j),Pendu(i,j),Vendu(i,j)]=forwardflight(R(i),Vtip,thrust_h(i,j)/N_rotors,nondp,solidity(i,j),h);%velocities are in kmph
-            % energy_ff(i,j)=Pendu(i,j)*(range/Vendu(i,j))+Prange(i,j)*(range/Vrange(i,j));%in watt-hr
+            try
+                [Prange(i,j), Vrange(i,j), Pendu(i,j), Vendu(i,j)] = forwardflight(R(i), Vtip, thrust_h(i,j)/N_rotors, nondp, solidity(i,j), h);
+            catch
+                Prange(i,j) = 0;
+                Vrange(i,j) = 0;
+                Pendu(i,j) = 0;
+                Vendu(i,j) = 0;
+                continue;  % Skip to next (j) iteration
+
+            end
+            Power_cruise(i,j)= GW(n)/L_by_D*V_cruise_5;
+            %----Cruise power------------------------for vc and vd
+            try
+            [Pcruise(i,j),P_rand(i,j)]=climb(thrust_h(i,j)/N_rotors/L_by_D,rho,R(i),0,V_cruise_5,Vd);
+            catch
+                Pclimb(i,j)=0;
+                Pdescent(i,j)=0
+                continue;  % Skip to next (j) iteration
+
+            end
+            Power_cruise(i,j)= GW(n)/L_by_D*V_cruise_5/motor_efficiency*trans_loss*electrical_loss/0.7;
 
 %-----------Total energy and battery capacity required based on mission
 
@@ -199,8 +234,9 @@ for i=1:size(R,2)
 %-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
 %           Basically all the energy that you have left should be utitlised
 %           here to hover for max T9 seconds.
-            T9=100;
-            e_section_9(i,j)=N_rotors*Pendu(i,j)*T9/motor_efficiency*trans_loss*electrical_loss;
+
+            e_section_9(i,j)=GW(n)*9.8/L_by_D*V_endu_cruise*T9/motor_efficiency*trans_loss*electrical_loss; %Joules
+            
 
 %-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
             e_section_10(i,j)=e_section_5(i,j);
@@ -353,7 +389,7 @@ for i=1:size(R,2)
             O4(i,j) = mfuel_cell(i,j);%total battery mass
             O5(i,j) = theta_h(i,j)*180/pi;%collective in degrees
             O6(i,j) = thrust_total(i,j)./power_h(i,j);%power loading(N/W)
-            O7(i,j) = (thrust_total(i,j)/2)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
+            O7(i,j) = (thrust_total(i,j)/N_rotors)./(pi.*V1(i,j).^2);%disk loading(N/m^2)
             O8(i,j) = power_mech(i,j);
         end
         
@@ -526,6 +562,19 @@ end
 % ylabel('Rotor RPM');
 % zlabel('Collective (degrees)');
 % title('Collective vs. Rotor Radius and RPM');
+% colorbar;
+% shading interp;
+% grid on;
+% 
+% %% disk loading
+% [R_mesh5, RPM_mesh5] = meshgrid(R, RPM);
+% 
+% figure;
+% surf(R_mesh5, RPM_mesh5, O7');
+% xlabel('Rotor Radius (m)');
+% ylabel('Rotor RPM');
+% zlabel('Disk Loading (Kg/m^2)');
+% title('Disk Loading vs. Rotor Radius and RPM');
 % colorbar;
 % shading interp;
 % grid on;
