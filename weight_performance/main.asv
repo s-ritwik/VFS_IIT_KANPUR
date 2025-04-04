@@ -19,11 +19,13 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1%0.8:0.05:1.6;%1.2:0.1:1.4;%:0.1:1.2;%(in meters)
-RPM=3000%2500:500:8000;
+R=1.1%0.8:0.05:1.15;%(in meters)
+RPM= 4000%2500:500:6000;
 %%
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
+N_rotors_cruise=4; %no of motors/rotors active in cruise fixed wing mode
+
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise=40;
@@ -120,6 +122,7 @@ for i=1:size(R,2)
                 [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
                     Rotor_opt(R(i), c(i,j), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                     %2 is for airfoil
+                
                 %------------BEMT------------------------------------
                  % [thrust_1,power_1,torque_1,theta_1,err_1,FM,BL,mech_power]=BEMT(R_fr(i),Ct,Nb_fr,c_fr(i,j),Vtip_fr(j),a,GW(n),trans_loss,nondp,motor_efficiency,nondt,theta0(k_mid),electrical_loss);
                 catch
@@ -128,7 +131,7 @@ for i=1:size(R,2)
 
 
                 % Check the error condition
-                if err_1 > 5
+                if err_1 > 5 
                     % Condition is satisfied, so move left to find a smaller k
                     k_max = k_mid - 1;
                     thrust_h(i,j) = thrust_1;
@@ -152,13 +155,35 @@ for i=1:size(R,2)
                     % Induced_power(i,j) = 0;
                 end
             end
-            
+            k_min2 = 1000;
+            k_max2 = RPM(j);
+            found2 = false;
+            while k_min2 <= k_max2
+                
+                k_mid2 = floor((k_min2 + k_max2) / 2);
+                omega2(i,j)=k_mid2*2*pi/60;
+                nondt2=rho*A*(omega2(i,j)*R(i))^2;%non-dimentional making terms for thrust
+                nondp2=rho*A*(omega2(i,j)*R(i))^3;%non-dimentional making terms for pressure
+                % for cruise fixed wing
+                [thrust_2, power_2, torque_2, theta_2, err_2, FM2, BL2, mech_power2,CP2,CT2] = ...
+                    Rotor_opt(R(i), c(i,j), thetatw, k_mid2, Nb, 3, GW(n)/L_by_D/N_rotors_cruise, trans_loss, nondp2, motor_efficiency, nondt2, theta_h(i,j), electrical_loss, rho,1);
+                if err_2 > 5
+                    k_max2 = k_mid2 - 1;
+                    err2(i,j)= err_2;
+                    Cruise_RPM(i,j)=k_mid2;
+                    power_cruise_hover(i,j)=power_2;% 0.85 is aerodynamic efficiency
+                else
+                    k_min2 = k_mid2 + 1;
+
+                end
+                % fprintf("1");
+            end
             if ~found
                 fprintf("solution not possible");
                 solution_check = 0;
                 break;
             else
-                fprintf("done");
+                % fprintf("done");
             end
             
 %-----------Auxillary power----------------------------------------------------------------------------------------
@@ -191,9 +216,17 @@ for i=1:size(R,2)
                 continue;  % Skip to next (j) iteration
 
             end
-            Power_cruise(i)
-            % energy_ff(i,j)=Pendu(i,j)*(range/Vendu(i,j))+Prange(i,j)*(range/Vrange(i,j));%in watt-hr
+            %----Cruise power------------------------for vc and vd
+            try
+            [Pcruise(i,j),P_rand(i,j)]=climb(thrust_h(i,j)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j),V_cruise_5,Vd);
+            catch
+                Pcruise(i,j)=0;
+                P_rand(i,j)=0
+                continue;  % Skip to next (j) iteration
 
+            end
+            Power_cruise(i,j)= GW(n)/L_by_D*V_cruise_5/motor_efficiency*trans_loss*electrical_loss/0.7;
+            power_cruise(i,j)= Pcruise(i,j)*N_rotors__c;
 %-----------Total energy and battery capacity required based on mission
 
 %-----------Section 2 : 15 seconds hover HIGE (i havent considered HIG yet)--------------------------------------------------------------
@@ -557,7 +590,7 @@ end
 % shading interp;
 % grid on;
 % 
-% %% disk loading
+%% disk loading
 % [R_mesh5, RPM_mesh5] = meshgrid(R, RPM);
 % 
 % figure;
