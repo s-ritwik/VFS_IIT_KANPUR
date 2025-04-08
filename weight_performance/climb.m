@@ -25,7 +25,7 @@ K4=-0.655;
 % xlabel("V_c/V_h");
 % ylabel("P/P_h");
 % title("Power in climb to hover");
-Pc=2*(Vc/(2*Vh)+sqrt((Vc/(2*Vh))^2 +1))*Ph;
+Pc=(Vc/(2*Vh)+sqrt((Vc/(2*Vh))^2 +1))*Ph;
 %Pd=2*(Vd/(2*Vh)-sqrt((Vd/(2*Vh))^2 -1))*Ph;
 % j=1;
 %for l= 0:1:20 %climb velocity in m/s
@@ -37,5 +37,5 @@ Pc=2*(Vc/(2*Vh)+sqrt((Vc/(2*Vh))^2 +1))*Ph;
 %     P(j)=P_Ph(j)*Ph;
 %     j=j+1;
 Vi_descent=(K+K1*(Vd/Vh)+K2*(Vd/Vh)^2+K3*(Vd/Vh)^3+K4*(Vd/Vh)^4)*Vh;
-Pd=2*(T*(Vd+Vi_descent));
+Pd=(T*(Vd+Vi_descent));
 end

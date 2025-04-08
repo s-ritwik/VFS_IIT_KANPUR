@@ -2,9 +2,7 @@ clc;
 clear;
 clear all;
 %% --------------------------------Mission requirements--------------------------------------------------------------%
-h=10; %m
-range = .5; %km
-climb_alt=.1;%climb altitude in km
+h=100; %m
 mpayload = 185; %(kg)payload 
 L_by_D=8; % estimated L/D ratio
 %% --------------------------------Atmosphere data-------------------------------------------------------------------%
@@ -19,30 +17,25 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1.1%0.8:0.05:1.15;%(in meters)
-RPM= 4000%2500:500:6000;
-%%
+R=1%0.8:0.05:1.15;%(in meters)
+RPM= 3000%2500:500:6000;
+%% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
 N_rotors_cruise=4; %no of motors/rotors active in cruise fixed wing mode
-
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
-V_cruise=40;
-V_cruise_5=40;
-
-% --------------section 9 where you have to maximise T9---------------------------
-T9=0.5*60*60; %1 hr
-V_endu_cruise=30;
-
+V_cruise=60;
+V_cruise_climb=40; %section 5 cruise vel
+%% --------------section 9 where you have to maximise T9---------------------------
+T9=80*60; %1 hr
+V_endu_cruise=50;
+%% -------------- Wing parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
 theta0  =(10:0.01:30)*pi/180;% collective
 thetatw = -16;% twist rate
-%Vtip_fr=(900:50:1300).*(2*pi*R_fr/60);%(2*pi*1400/60)*R_fr;% tip velocity in m/s
-%rpm=(Vtip_fr*60/(2*pi*R_fr));%blade rpm
-S_fr =12; %no of cells in series in a battery(44.4v/3.7v)
-S_br =12; %no of cells in series(same voltage considered for back rotor)
-% ----------------------wing-----------------------------------
+S_battery =12; %no of cells in series in a battery(44.4v/3.7v)
+%% ----------------------wing-----------------------------------
 AR_wing=12;% aspect ratio of wing
 taper_ratio=0.4; 
 tc_ratio = 0.25; % Thickness to chord ratio
@@ -51,20 +44,16 @@ Cl_design=0.8;% Cl_design
 trans_loss=1.05;%transmission losses(2%)
 electrical_loss=1.02;%electrical losses(2%)
 motor_efficiency=0.85;%motor efficiency(85%)
-%GR=5;%Gear ratio
-%rpm_m=GR*rpm;
-%motor_efficiency=(-5.655e-8)*(rpm_m)^2 + 0.0003249*(rpm_m) + 0.3692;%motor efficiency(function of motor rpm)
 mu=1.09;
 %% --------------------------------Fixed weights----------------------------------------------------------------------
 %mmotor=1.74*4;%we are using 4 motors(Tmotor U15 2 KV80),total power=34.3 KW
 %mesc=0.558*4;%we are using 4 esc,(FLAME 200A 14S) 1 for each motor
 %% --------------------------------Constants----------------------------------------------------------------------
-
 kg_to_lb = 2.20462; % kg to pounds
 m_to_ft = 3.28084; % meters to feet
+g=9.81;
 
-
-%%                                 Design code
+%% ---------------------------------------Design code---------------------------------------------------------
 for i=1:size(R,2)
     
     for j=1:size(RPM,2)
@@ -92,7 +81,7 @@ for i=1:size(R,2)
         batt_reserve=0.85;% 15% battery reserve
         No_of_battery=2;% no of batteries each side
         fprintf(".");
-        Nominal_volt=3.6*S_fr; %Nominal voltage of the entire one battery(cells in series)
+        Nominal_volt=3.6*S_battery; %Nominal voltage of the entire one battery(cells in series)
         while( error>0.2 )
             count_k=0;
 %-----------Thrust and Power calculation using momentum theory(hover)-----------------------------------------------------
@@ -159,7 +148,7 @@ for i=1:size(R,2)
             k_max2 = RPM(j);
             found2 = false;
             while k_min2 <= k_max2
-                
+
                 k_mid2 = floor((k_min2 + k_max2) / 2);
                 omega2(i,j)=k_mid2*2*pi/60;
                 nondt2=rho*A*(omega2(i,j)*R(i))^2;%non-dimentional making terms for thrust
@@ -221,19 +210,22 @@ for i=1:size(R,2)
             [Pcruise(i,j),P_rand(i,j)]=climb(thrust_h(i,j)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j),V_cruise_5,Vd);
             catch
                 Pcruise(i,j)=0;
-                P_rand(i,j)=0
+                P_rand(i,j)=0;
                 continue;  % Skip to next (j) iteration
 
             end
-            Power_cruise(i,j)= GW(n)/L_by_D*V_cruise_5/motor_efficiency*trans_loss*electrical_loss/0.7;
-            power_cruise(i,j)= Pcruise(i,j)*N_rotors__c;
+            % Power_cruise(i,j)= GW(n)/L_by_D*V_cruise_5/motor_efficiency*trans_loss*electrical_loss/0.7;
+            % Thrust_cruise(i,j)=GW(n)/L_by_D*g;
+            % Pcruise(i,j)= 0.5*Thrust_cruise(i,j)/N_rotors_cruise*V_cruise*(1+sqrt(2*Thrust_cruise(i,j)/(rho*A*V_cruise^2)));
+            power_cruise(i,j)= Pcruise(i,j)*N_rotors_cruise;
 %-----------Total energy and battery capacity required based on mission
 
 %-----------Section 2 : 15 seconds hover HIGE (i havent considered HIG yet)--------------------------------------------------------------
-            e_section_2(i,j)= Power_total_hover(i,j)*15/motor_efficiency*trans_loss*electrical_loss; %watt (every power is in watt)
+            e_section_2(i,j)= Power_total_hover(i,j)*15/1.5; %watt (every power is in watt)
 
 %-----------Section 3 : vertical Climb from 0m to 60m @ 0.76m/s : ~79 seconds of climb--------------------------------------------------------------
-            e_section_3(i,j)=N_rotors*Pclimb(i,j)*60/Vc/motor_efficiency*trans_loss*electrical_loss;
+            p_section_3(i,j)= N_rotors*Pclimb(i,j);
+            e_section_3(i,j)=N_rotors*Pclimb(i,j)*60/Vc/motor_efficiency;
 
 %-----------Section 4 : 10 seconds hover HOGE--------------------------------------------------------------
             e_section_4(i,j)=Power_total_hover(i,j)*10/motor_efficiency*trans_loss*electrical_loss;
@@ -241,13 +233,15 @@ for i=1:size(R,2)
 %-----------Section 5 : 9deg climb--------------------------------------------------------------
             %Power=D*V_cruise_5 + W*sin(9)*V_cruise_5=L/L_D*V +Wsin(9)*V
             %where L=Wcos(9)
-            power_5(i,j)=(GW(n)*cos(degtorad(9))/L_by_D +GW(n)*sin(degtorad(9)))*V_cruise_5/motor_efficiency*trans_loss*electrical_loss;
-            time_5(i,j)=(300-60)/V_cruise_5/sin(degtorad(9));
+            thrust_section_5(i,j)= GW(n)*g*(cos(degtorad(9))/L_by_D+ sin(degtorad(9)));
+            power_5(i,j)=N_rotors_cruise* 0.5*thrust_section_5(i,j)/N_rotors_cruise*V_cruise_climb*(1+sqrt(2*thrust_section_5(i,j)/N_rotors_cruise/(rho*A*V_cruise_climb^2)));
+            time_5(i,j)=(300-60)/V_cruise_climb/sin(degtorad(9));
             e_section_5(i,j)=power_5(i,j)*time_5(i,j);
 
 
 %-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
-            e_section_6(i,j)=GW(n)*9.8/L_by_D*30000/motor_efficiency*trans_loss*electrical_loss; %Joules
+            t_section_6(i,j)= 30000/V_cruise;
+            e_section_6(i,j)= power_cruise(i,j)*t_section_6(i,j);
             
 %-----------Section 7 : V descent @-7.6m/s from 300m to 30m (NO POWER)--------------------------------------------------------------
             e_section_7(i,j)=0;
@@ -258,50 +252,44 @@ for i=1:size(R,2)
 %-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
 %           Basically all the energy that you have left should be utitlised
 %           here to hover for max T9 seconds.
-
-            e_section_9(i,j)=GW(n)*9.8/L_by_D*V_endu_cruise*T9/motor_efficiency*trans_loss*electrical_loss; %Joules
+            P_cruise_endurance(i,j)= Thrust_cruise(i,j)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j)/(rho*A*V_endu_cruise^2)));
+            power_endu(i,j)= P_cruise_endurance(i,j)*N_rotors_cruise;
+            e_section_9(i,j)=power_endu(i,j)*T9; %Joules
             
 
 %-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
             e_section_10(i,j)=e_section_5(i,j);
-
+            
 
 %-----------Section 11 : Cruise back approx 30km--------------------------------------------------------------
-            e_section_11(i,j)=GW(n)*9.8/L_by_D*30000/motor_efficiency*trans_loss*electrical_loss; %Joules
+            e_section_11(i,j)=e_section_6(i,j); %Joules
 
 
 %-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
             e_section_12(i,j)=0;
 
 %-----------Section 13 : HOGE @60m for 10 seconds--------------------------------------------------------------
-            e_section_13(i,j)=Power_total_hover(i,j)*10/motor_efficiency*trans_loss*electrical_loss;
+            e_section_13(i,j)=Power_total_hover(i,j)*10;
 
 
 %-----------Section 14 : Vertical descent @-0.5m/s from 60m to HIGE--------------------------------------------------------------
-            e_section_14(i,j)= N_rotors*Pdescent(i,j)*60/Vd/motor_efficiency*trans_loss*electrical_loss;
+            e_section_14(i,j)= N_rotors*Pdescent(i,j)*60/Vd/motor_efficiency;
 
 %-----------Section 15 : HIGE for 15 seconds--------------------------------------------------------------
-            e_section_15(i,j)= Power_total_hover(i,j)*15/motor_efficiency*trans_loss*electrical_loss;
+            e_section_15(i,j)= Power_total_hover(i,j)*15*0.7;
 
-            energy_init(i,j) = e_section_2(i,j) + e_section_3(i,j) + e_section_4(i,j) + e_section_5(i,j) + ...
-              e_section_6(i,j) + e_section_7(i,j) + e_section_8(i,j) + e_section_9(i,j) + ...
-              e_section_10(i,j) + e_section_11(i,j) + e_section_12(i,j) + e_section_13(i,j) + ...
-              e_section_14(i,j) + e_section_15(i,j);
-            energy(i,j)=energy_init(i,j)/3600/batt_reserve; % Watt-hr energy after considering reserve;
+%% -------------------- ENERGY CALCULATIONS------------------------------------------------------------------
+            % Battery powered ( upto 30kg)
+            energy_init_battery(i,j)= e_section_3(i,j) + e_section_4(i,j)+e_section_8(i,j)+e_section_13(i,j) + e_section_14(i,j) + e_section_15(i,j);
+            % Hydrogen powered
+            energy_init(i,j)=e_section_2(i,j) + e_section_5(i,j) + ...
+              e_section_6(i,j) + e_section_7(i,j) +  e_section_9(i,j) + ...
+              e_section_10(i,j) + e_section_11(i,j) + e_section_12(i,j) ;
+              
+            energy_hydrogen(i,j)=energy_init(i,j)/3600/batt_reserve; % Watt-hr energy after considering reserve;
+            energy_battery(i,j)=energy_init_battery(i,j)/3600/batt_reserve;
             % energy(i,j) =(Power_total_hover(i,j)*(endurance)+Pclimb(i,j)*0.5/60+Pdescent(i,j)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
-            energy_MJ(i,j) = energy(i,j)*(3600)*10^(-6);%energy in mega -joules(MJ)
-            C(i,j) =(((energy(i,j)/(No_of_battery*Nominal_volt))*1000)); %total battery capacity, all 2 batteries combined, in mAh=E(energy)/V(voltage), 3.6 volt for 1 cell;(17% for battery reserve)
-            flight_time_min(i,j)= (batt_reserve*No_of_battery*Nominal_volt*(C(i,j))/ Power_total_hover(i,j))*60*10^(-3);%flight time in min
-            % C_h(i,j)= ((Power_total(i,j)*(15/60))/(2*S_fr*3.6))*1000;
-            % C_ver_climb(i,j)=(Pclimb(i,j)*(climb_alt/(Vc*3.6))/(2*S_fr*3.6))*1000;
-            % C_ver_descent(i,j)=(Pdescent(i,j)*(climb_alt/(Vd*3.6))/(2*S_fr*3.6))*1000;
-            % C_ff_endu(i,j)= (Pendu(i,j)*(range/Vendu(i,j))/(2*S_fr*3.6))*1000;
-            % C_ff_range(i,j)=(Prange(i,j)*(range/Vrange(i,j))/(2*S_fr*3.6))*1000;
-            % C_aux=(energy_aux/(2*S_fr*3.6))*1000;
-            % C_total(i,j)=(C_h(i,j)+ C_ver_climb(i,j)+ C_ver_descent(i,j)+ C_ff_endu(i,j)+C_ff_range(i,j)+C_aux)/batt_reserve;
-            % flight_time_min(i,j)=(batt_reserve)*(No_of_battery)*(Nominal_volt)*(60)*(10^-3)*((C_h(i,j)/Power_total(i,j))+ C_ver_climb(i,j)/Pclimb(i,j) + C_ver_descent(i,j)/Pdescent(i,j) +
-            % C_ff_endu(i,j)/Pendu(i,j) + C_ff_range(i,j)/Prange(i,j)+ C_aux/aux_power);
-
+            energy_MJ_hydrogen(i,j) = energy_hydrogen(i,j)*(3600)*10^(-6);%energy in mega -joules(MJ)
 
 
 %-----------WEIGHT ESTIMATION------------------------------------------------------------------------------------------
@@ -314,14 +302,14 @@ for i=1:size(R,2)
             mhub=mhub_pounds*0.4535;%mass ofhub&hinge in kg
             mhub=0;
             rpm(i,j)=RPM(j);
-            Kv(i,j) = rpm(i,j)/(2*S_fr*3.6);% rpm per volt of one side
+            Kv(i,j) = rpm(i,j)/(2*S_battery*3.6);% rpm per volt of one side
             mmotor = 0.5;%HK5-4030-355kv or Scorpion IM-8012-115kv
             mmotor= ((10^4.0499)*(Kv(i,j)^-0.5329))*10^-3;
-            Imax_fr(i,j)=(Power_total_hover(i,j)/N_rotors)/(2*S_fr*3.6);% maximum current of one side
+            Imax_fr(i,j)=(Power_total_hover(i,j)/N_rotors)/(2*S_battery*3.6);% maximum current of one side
             mesc_fr =2*0.8421*Imax_fr(i,j)*10^-3;%mass of esc(Thunder 300A 24S)
             m_rotor_group=N_rotors*(mrotor+mhub+mmotor+mesc_fr);%total front mass
 %-----------FUSELAGE------------------------------------------------------------------------------------------------%
-            nult=2.5; %ultimate load factor from vibhram
+            nult=2.5; %ultimate load factor
             Lf=(L)*3.28+4;% total length of fuselage in ft
             Sf=30;%fuselage wetted area in ft^2(22.38)
             Iramp = 1;% raming factor, 1 for no ramp
@@ -377,10 +365,14 @@ for i=1:size(R,2)
             % W_fuselage = 0.0737 * (2 * (D_fuselage * m_to_ft) * (v_cruise * m_to_ft)^0.338 * (L_fuselage * m_to_ft)^0.857 * ...
             %               (GW(n) * kg_to_lb * Nult)^0.286)^1.1 / kg_to_lb;
 %-----------HYDROGEN FUEL CELL-----------------------------------------------------------------------------------------------------%
-            sed = 300*3600*1e-6; %MJ/Kg(specific energy density of an efficient Hydrogen cell)
-            m_hydrogen =energy_MJ(i,j) / sed;%kg
-            mfuel_system=30;%Power_total_hover(i,j)/0.15/1000;
-            mfuel_cell(i,j)= mfuel_system+ m_hydrogen;
+            sed_hydrogen = 800; %Watt hr/Kg(specific energy density of an efficient Hydrogen cell)
+            sed_battery= 350; % Watt hr
+            m_hydrogen(i,j) =energy_hydrogen(i,j) / sed_hydrogen;%kg
+            m_battery(i,j)= energy_battery(i,j) / sed_battery;
+            mfuel_system=30;%power_cruise(i,j)/0.15/1000;
+            mhydrogen_fuel_cell(i,j)= mfuel_system(i,j)+ m_hydrogen(i,j);
+            mfuel_cell(i,j)= mhydrogen_fuel_cell(i,j)+m_battery(i,j);
+            
 %-----------FIXED--------------------------------------------------------------------------------------------------
             m_avionics=0.05*mempty;% mass of avionics
             manti_ice=0;%8*(GW(n)/1000);%mass of anti ice equipments
@@ -409,7 +401,7 @@ for i=1:size(R,2)
             V7(i,j)= Vtip/sqrt(1.4*287*T);%mach number
             O1(i,j) = Power_total_hover(i,j);%total hover power
             O2(i,j) = mgross(i,j);%gross weight
-            O3(i,j) = energy(i,j);%total energy
+            O3(i,j) = energy_hydrogen(i,j);%total energy
             O4(i,j) = mfuel_cell(i,j);%total battery mass
             O5(i,j) = theta_h(i,j)*180/pi;%collective in degrees
             O6(i,j) = thrust_total(i,j)./power_h(i,j);%power loading(N/W)
@@ -429,7 +421,7 @@ for i=1:size(R,2)
               'DiskLoading', O7(i,j); 'MechanicalPower', O8(i,j); 
               'BatteryMass', mfuel_cell; 'EmptyMass', mempty; 
               'FuselageMass', mfuselage;'ClimbSpeed', Vc; 'DescentSpeed', Vd;
-              'CruiseVelocity', V_cruise; 'CruiseVelocity_Climb', V_cruise_5; 
+              'CruiseVelocity', V_cruise; 'CruiseVelocity_Climb', V_cruise_climb; 
               'AspectRatio', AR; 'TwistRate', thetatw; 'Max endurance Velocity', Vendu;'T9 time to be maximised for loiter',T9});
             % Prompt user for confirmation before saving
             
