@@ -2,7 +2,7 @@ clc;
 clear;
 clear all;
 %% --------------------------------Mission requirements--------------------------------------------------------------%
-h=100; %m
+h=300; %m
 mpayload = 185; %(kg)payload 
 L_by_D=8; % estimated L/D ratio
 %% --------------------------------Atmosphere data-------------------------------------------------------------------%
@@ -22,26 +22,26 @@ RPM= 3000%2500:500:6000;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
-N_rotors_cruise=4; %no of motors/rotors active in cruise fixed wing mode
+N_rotors_cruise=2; %no of motors/rotors active in cruise fixed wing mode
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
-V_cruise=60;
-V_cruise_climb=40; %section 5 cruise vel
+V_cruise=50;
+V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
-T9=80*60; %1 hr
-V_endu_cruise=50;
+T9=60*60; %1 hr
+V_endu_cruise=45;
 %% -------------- Wing parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
 theta0  =(10:0.01:30)*pi/180;% collective
-thetatw = -16;% twist rate
+thetatw = -18;% twist rate
 S_battery =12; %no of cells in series in a battery(44.4v/3.7v)
 %% ----------------------wing-----------------------------------
 AR_wing=12;% aspect ratio of wing
 taper_ratio=0.4; 
 tc_ratio = 0.25; % Thickness to chord ratio
-Cl_design=0.8;% Cl_design
+Cl_design=0.9;% Cl_design
 %% --------------------------------Losses & Efficiencies-------------------------------------------------------------%
-trans_loss=1.05;%transmission losses(2%)
+trans_loss=1.03;%transmission losses(2%)
 electrical_loss=1.02;%electrical losses(2%)
 motor_efficiency=0.85;%motor efficiency(85%)
 mu=1.09;
@@ -52,7 +52,7 @@ mu=1.09;
 kg_to_lb = 2.20462; % kg to pounds
 m_to_ft = 3.28084; % meters to feet
 g=9.81;
-
+S=2;
 %% ---------------------------------------Design code---------------------------------------------------------
 for i=1:size(R,2)
     
@@ -144,6 +144,7 @@ for i=1:size(R,2)
                     % Induced_power(i,j) = 0;
                 end
             end
+%% -----------------------------Cruise performance of the rotor--------------------------------
             k_min2 = 1000;
             k_max2 = RPM(j);
             found2 = false;
@@ -167,6 +168,33 @@ for i=1:size(R,2)
                 end
                 % fprintf("1");
             end
+%% ----------- 9 degree climb performance--------------------
+            % k_min3 = 1000;
+            % k_max3 = RPM(j);
+            % found3 = false;
+            % thrust_section_5(i,j)= GW(n)*g*(cos(degtorad(9))/L_by_D+ sin(degtorad(9)));
+            % 
+            % while k_min3 <= k_max3
+            % 
+            %     k_mid3 = floor((k_min3 + k_max3) / 2);
+            %     omega3(i,j)=k_mid3*2*pi/60;
+            %     nondt3=rho*A*(omega3(i,j)*R(i))^2;%non-dimentional making terms for thrust
+            %     nondp3=rho*A*(omega3(i,j)*R(i))^3;%non-dimentional making terms for pressure
+            %     % for cruise fixed wing
+            %     [thrust_3, power_3, torque_3, theta_3, err_3, FM3, BL3, mech_power3,CP3,CT3] = ...
+            %         Rotor_opt(R(i), c(i,j), thetatw, k_mid3, Nb, 3, thrust_section_5(i,j)/g/N_rotors_cruise, trans_loss, nondp3, motor_efficiency, nondt3, theta_h(i,j), electrical_loss, rho,1);
+            %     if err_3 > 5
+            %         k_max3 = k_mid3 - 1;
+            %         err3(i,j)= err_3;
+            %         Cruise_Climb_RPM(i,j)=k_mid3;
+            %         power_cruise_climb(i,j)=power_3;% 0.85 is aerodynamic efficiency
+            %     else
+            %         k_min3 = k_mid3 + 1;
+            % 
+            %     end
+            %     % fprintf("1");
+            % end
+            % ------------------------------------------------------------------------------------
             % fprintf("\n");
             if ~found
                 fprintf("solution not possible");
@@ -233,15 +261,20 @@ for i=1:size(R,2)
             e_section_3(i,j)=N_rotors*Pclimb(i,j)*60/Vc/motor_efficiency;
 
 %-----------Section 4 : 10 seconds hover HOGE--------------------------------------------------------------
-            e_section_4(i,j)=Power_total_hover(i,j)*10/motor_efficiency*trans_loss*electrical_loss;
+            e_section_4(i,j)=Power_total_hover(i,j)*10;
 
 %-----------Section 5 : 9deg climb--------------------------------------------------------------
             %Power=D*V_cruise_5 + W*sin(9)*V_cruise_5=L/L_D*V +Wsin(9)*V
             %where L=Wcos(9)
-            thrust_section_5(i,j)= GW(n)*g*(cos(degtorad(9))/L_by_D+ sin(degtorad(9)));
-            power_5(i,j)=N_rotors_cruise* 0.5*thrust_section_5(i,j)/N_rotors_cruise*V_cruise_climb*(1+sqrt(2*thrust_section_5(i,j)/N_rotors_cruise/(rho*A*V_cruise_climb^2)));
-            time_5(i,j)=(300-60)/V_cruise_climb/sin(degtorad(9));
-            e_section_5(i,j)=power_5(i,j)*time_5(i,j);
+            try
+                power_5(i,j)=power_cruise(i,j)+ V_cruise_climb*GW(n)*g; % by using excess power formula
+                % power_5(i,j)= power_5(i,j)*N_rotors_cruise;
+            catch
+                fprintf(" Climb performance failed")
+                power_5(i,j)=N_rotors_cruise* 0.5*thrust_section_5(i,j)/N_rotors_cruise*V_cruise_climb*(1+sqrt(2*thrust_section_5(i,j)/N_rotors_cruise/(rho*A*V_cruise_climb^2)));
+            end
+            time_5(i,j)=(300-60)/V_cruise_climb;
+            e_section_5(i,j)= power_5(i,j)*time_5(i,j);
 
 
 %-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
@@ -252,15 +285,16 @@ for i=1:size(R,2)
             e_section_7(i,j)=0;
 
 %-----------Section 8 : 30 seconds hover @30m--------------------------------------------------------------
-            e_section_8(i,j)=Power_total_hover(i,j)*30/motor_efficiency*trans_loss*electrical_loss;
+            e_section_8(i,j)=Power_total_hover(i,j)*30;
 
 %-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
 %           Basically all the energy that you have left should be utitlised
 %           here to hover for max T9 seconds.
-            P_cruise_endurance(i,j)= Thrust_cruise(i,j)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j)/(rho*A*V_endu_cruise^2)));
+            P_cruise_endurance(i,j)=climb(thrust_h(i,j)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j),V_endu_cruise,Vd);
+            % P_cruise_endurance(i,j)= Thrust_cruise(i,j)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j)/(rho*A*V_endu_cruise^2)));
             power_endu(i,j)= P_cruise_endurance(i,j)*N_rotors_cruise;
             e_section_9(i,j)=power_endu(i,j)*T9; %Joules
-            
+            Cl_req(i,j)= GW(n)/2*g/(0.5*rho*V_endu_cruise^2*S);
 
 %-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
             e_section_10(i,j)=e_section_5(i,j);
@@ -374,7 +408,7 @@ for i=1:size(R,2)
             sed_battery= 350; % Watt hr
             m_hydrogen(i,j) =energy_hydrogen(i,j) / sed_hydrogen;%kg
             m_battery(i,j)= energy_battery(i,j) / sed_battery;
-            mfuel_system=40;%power_cruise(i,j)/1000*2.5;
+            mfuel_system=45;%power_cruise(i,j)/1000*2.5;
             mhydrogen_fuel_cell(i,j)= mfuel_system(i,j)+ m_hydrogen(i,j);
             mfuel_cell(i,j)= mhydrogen_fuel_cell(i,j)+m_battery(i,j);
             
