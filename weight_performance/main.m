@@ -28,7 +28,7 @@ Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
-T9=70*60; %1 hr
+T9=80*60; %1 hr
 %% -------------- Wing parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
 theta0  =(10:0.01:30)*pi/180;% collective

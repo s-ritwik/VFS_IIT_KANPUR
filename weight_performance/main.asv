@@ -17,9 +17,9 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1%0.7:0.1:1.1;%(in meters)
-RPM= 3000%2000:1000:6000;
-V_cruise=50%40:10:80;
+R=0.8:0.1:1.1;%(in meters)
+RPM= 2000:1000:5000;
+V_cruise=40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
@@ -28,8 +28,7 @@ Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
-T9=60*60; %1 hr
-V_endu_cruise=45;
+T9=80*60; %1 hr
 %% -------------- Wing parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
 theta0  =(10:0.01:30)*pi/180;% collective
@@ -58,6 +57,7 @@ for k=1:size(V_cruise,2)
     for i=1:size(R,2)
         
         for j=1:size(RPM,2)
+            V_endu_cruise=V_cruise(k)*0.85;
             wing_S(i,j,k)=2;
             solution_check=1;
             Vtip=(RPM(j)).*(2*pi.*R(i)/60);
@@ -83,8 +83,9 @@ for k=1:size(V_cruise,2)
             No_of_battery=2;% no of batteries each side
             % fprintf(".");
             Nominal_volt=3.6*S_battery; %Nominal voltage of the entire one battery(cells in series)
-            gibrish=0;
-            while( error>0.2 & n<25 & gibrish<1)
+            gibrish=0; % to terminate loop when negative power arises
+            while( error>0.2 & n<25 & gibrish <1)
+                % gibrish
                 count_k=0;
     %-----------Thrust and Power calculation using momentum theory(hover)-----------------------------------------------------
                 Ct=GW(n)*9.81/nondt;%considering thrust equal to weight for hover
@@ -99,7 +100,7 @@ for k=1:size(V_cruise,2)
                 k_max = length(theta0);
                 found = false;
                 
-                while k_min <= k_max & gibrish<1
+                while k_min <= k_max
                     k_mid = floor((k_min + k_max) / 2);
                     % fprintf("kmin= %4.3f kmid= %4.3f kmax= %4.3f \n", k_min,k_mid,k_max);
                      % fprintf("theta: %4.3f \n",theta0); 
@@ -109,8 +110,7 @@ for k=1:size(V_cruise,2)
     
                     %____________________________ROTOR OPT__________
                     try
-                    % fprintf("cal");
-                    fprintf(k_mid);
+    
                     [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
                         Rotor_opt(R(i), c(i,j,k), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                         %2 is for airfoil
@@ -118,26 +118,13 @@ for k=1:size(V_cruise,2)
                     %------------BEMT------------------------------------
                      % [thrust_1,power_1,torque_1,theta_1,err_1,FM,BL,mech_power]=BEMT(R_fr(i),Ct,Nb_fr,c_fr(i,j,k),Vtip_fr(j),a,GW(n),trans_loss,nondp,motor_efficiency,nondt,theta0(k_mid),electrical_loss);
                     catch
-                        continue;
+                        continue
                     end
     
                     % if power_1 <0
-                    %     gibrish=1;
-                    %     fprintf("negative power error");
-                    %     k_max = k_mid - 1;
-                    %     thrust_h(i,j,k) = 0;
-                    %     power_h(i,j,k) = 0;
-                    %     torque_h(i,j,k) = 0;
-                    %     C_P(i,j,k) = 0;
-                    %     C_T(i,j,k)= 0;
-                    %     theta_h(i,j,k) = theta0(k_mid);
-                    %     err(i,j,k) = 0;
-                    %     power_mech(i,j,k) = 0;
-                    %     count_k = k_mid;
-                    %     found = false;
+                    %     fprintf("skipping iteration")
                     %     continue;
                     % end
-                    
                     % Check the error condition
                     if err_1 > 5 
                         % Condition is satisfied, so move left to find a smaller k
@@ -163,10 +150,22 @@ for k=1:size(V_cruise,2)
                         % Induced_power(i,j,k) = 0;
                     end
                 end
-                if gibrish>1
-                    continue;
-                end
     %% -----------------------------Cruise performance of the rotor--------------------------------
+                if(power_h(i,j,k)<0)
+                    gibrish=1;
+                    k_max = k_mid - 1;
+                    thrust_h(i,j,k) = 0;
+                    power_h(i,j,k) = 0;
+                    torque_h(i,j,k) = 0;
+                    C_P(i,j,k) = 0;
+                    C_T(i,j,k)= 0;
+                    theta_h(i,j,k) = theta0(k_mid);
+                    err(i,j,k) = 0;
+                    power_mech(i,j,k) = 0;
+                    count_k = k_mid;
+                    found = false;
+                    GW(n)=0;
+                end
                 k_min2 = 1000;
                 k_max2 = RPM(j);
                 found2 = false;
@@ -452,7 +451,7 @@ for k=1:size(V_cruise,2)
                 %     power_final(i,j,k)=power_1(count); 
                 %     thrust_final(i,j,k)=
             end
-            if (solution_check==1 & gibrish<1)
+            if (solution_check==1)
                 V1(i,j,k) = R(i);% radius
                 V2(i,j,k) = Vtip;%tip speed
                 V3(i,j,k) = thrust_total(i,j,k);%total thrust
@@ -518,7 +517,7 @@ if save_variable
             % Replace '.' with '_' in file-safe names
             T9_str = strrep(sprintf('%.2f', T9/60), '.', '_');
             Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
-            filename = sprintf('T_%s_Vendu_%s.mat', T9_str, Vendu_str);
+            filename = sprintf('T_%s.mat', T9_str, Vendu_str);
 
             save(filename);  % Saves all workspace variables
             fprintf('Variables saved to %s\n', filename);
