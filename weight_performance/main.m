@@ -52,6 +52,7 @@ mu=1.09;
 kg_to_lb = 2.20462; % kg to pounds
 m_to_ft = 3.28084; % meters to feet
 g=9.81;
+save_variable=true;
 %% ---------------------------------------Design code---------------------------------------------------------
 for k=1:size(V_cruise,2)
     for i=1:size(R,2)
@@ -448,8 +449,8 @@ for k=1:size(V_cruise,2)
                 O8(i,j,k) = power_mech(i,j,k);
             end
             
-            save=false;
-                if save==true
+            save_file=false;
+                if save_file==true
                            % Create a table with the variables
                 data = table({'Number of Blades', Nb;'NumberOfRotors', N_rotors;  'Radius', V1(i,j,k); 'TipSpeed', V2(i,j,k); 
                   'TotalThrust', V3(i,j,k); 'Extra thrust at hover', V4(i,j,k); 
@@ -487,6 +488,28 @@ for k=1:size(V_cruise,2)
         end
     end
 end
+%% -----------------------------------Saving Variable data------------------------------------
+if save_variable
+    % Check if T9 and V_endu_cruise exist
+    if exist('T9', 'var') && exist('V_endu_cruise', 'var')
+        % Ensure both are scalars
+        if isscalar(T9) && isscalar(V_endu_cruise)
+            % Replace '.' with '_' in file-safe names
+            T9_str = strrep(sprintf('%.2f', T9), '.', '_');
+            Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
+            filename = sprintf('T_%s_Vendu_%s.mat', T9_str, Vendu_str);
+
+            save(filename);  % Saves all workspace variables
+            fprintf('Variables saved to %s\n', filename);
+        else
+            error('T9 and V_endu_cruise must be scalars to name the file.');
+        end
+    else
+        error('T9 and/or V_endu_cruise are not defined.');
+    end
+end
+
+
 %% ------------------------------------Design Trade study--------------------
 % set(groot,'defaultLineLineWidth',3);
 % set(groot,'defaultAxesFontSize',16);
