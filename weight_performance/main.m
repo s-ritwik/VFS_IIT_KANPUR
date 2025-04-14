@@ -17,9 +17,9 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1%0.8:0.05:1.15;%(in meters)
-RPM= 3000%2500:500:6000;
-V_cruise=40:10:60;
+R=0.8:0.1:1.1;%(in meters)
+RPM= 2000:1000:5000;
+V_cruise=40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
@@ -28,8 +28,7 @@ Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
-T9=60*60; %1 hr
-V_endu_cruise=45;
+T9=70*60; %1 hr
 %% -------------- Wing parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
 theta0  =(10:0.01:30)*pi/180;% collective
@@ -58,6 +57,7 @@ for k=1:size(V_cruise,2)
     for i=1:size(R,2)
         
         for j=1:size(RPM,2)
+            V_endu_cruise=V_cruise(k)*0.85;
             wing_S(i,j,k)=2;
             solution_check=1;
             Vtip=(RPM(j)).*(2*pi.*R(i)/60);
@@ -81,9 +81,11 @@ for k=1:size(V_cruise,2)
             error=100;%arbitrary value of error for initialization
             batt_reserve=0.85;% 15% battery reserve
             No_of_battery=2;% no of batteries each side
-            fprintf(".");
+            % fprintf(".");
             Nominal_volt=3.6*S_battery; %Nominal voltage of the entire one battery(cells in series)
-            while( error>0.2 )
+            gibrish=0; % to terminate loop when negative power arises
+            while( error>0.2 & n<25 & gibrish <1)
+                % gibrish
                 count_k=0;
     %-----------Thrust and Power calculation using momentum theory(hover)-----------------------------------------------------
                 Ct=GW(n)*9.81/nondt;%considering thrust equal to weight for hover
@@ -119,7 +121,10 @@ for k=1:size(V_cruise,2)
                         continue
                     end
     
-    
+                    % if power_1 <0
+                    %     fprintf("skipping iteration")
+                    %     continue;
+                    % end
                     % Check the error condition
                     if err_1 > 5 
                         % Condition is satisfied, so move left to find a smaller k
@@ -146,6 +151,21 @@ for k=1:size(V_cruise,2)
                     end
                 end
     %% -----------------------------Cruise performance of the rotor--------------------------------
+                if(power_h(i,j,k)<0)
+                    gibrish=1;
+                    k_max = k_mid - 1;
+                    thrust_h(i,j,k) = 0;
+                    power_h(i,j,k) = 0;
+                    torque_h(i,j,k) = 0;
+                    C_P(i,j,k) = 0;
+                    C_T(i,j,k)= 0;
+                    theta_h(i,j,k) = theta0(k_mid);
+                    err(i,j,k) = 0;
+                    power_mech(i,j,k) = 0;
+                    count_k = k_mid;
+                    found = false;
+                    GW(n)=0;
+                end
                 k_min2 = 1000;
                 k_max2 = RPM(j);
                 found2 = false;
@@ -425,7 +445,7 @@ for k=1:size(V_cruise,2)
                 m=m+1;
                 n=n+1;
                 GW(n) = mgross(i,j,k);
-                fprintf("current total mass :%4.3f \n",GW(n));
+                % fprintf("current total mass :%4.3f \n",GW(n));
                 error= abs(GW(n)-GW(m));
                 % if(error<=0.01)
                 %     power_final(i,j,k)=power_1(count); 
@@ -448,7 +468,7 @@ for k=1:size(V_cruise,2)
                 O7(i,j,k) = (thrust_total(i,j,k)/N_rotors)./(pi.*V1(i,j,k).^2);%disk loading(N/m^2)
                 O8(i,j,k) = power_mech(i,j,k);
             end
-            
+            fprintf("Total mass :%4.3f \n",GW(n));
             save_file=false;
                 if save_file==true
                            % Create a table with the variables
@@ -495,9 +515,9 @@ if save_variable
         % Ensure both are scalars
         if isscalar(T9) && isscalar(V_endu_cruise)
             % Replace '.' with '_' in file-safe names
-            T9_str = strrep(sprintf('%.2f', T9), '.', '_');
+            T9_str = strrep(sprintf('%.2f', T9/60), '.', '_');
             Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
-            filename = sprintf('T_%s_Vendu_%s.mat', T9_str, Vendu_str);
+            filename = sprintf('T_%s.mat', T9_str, Vendu_str);
 
             save(filename);  % Saves all workspace variables
             fprintf('Variables saved to %s\n', filename);

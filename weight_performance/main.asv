@@ -17,9 +17,9 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1%0.8:0.05:1.15;%(in meters)
-RPM= 3000%2500:500:6000;
-V_cruise=40:10:60;
+R=1%0.7:0.1:1.1;%(in meters)
+RPM= 3000%2000:1000:6000;
+V_cruise=50%40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
@@ -52,16 +52,16 @@ mu=1.09;
 kg_to_lb = 2.20462; % kg to pounds
 m_to_ft = 3.28084; % meters to feet
 g=9.81;
-wing_S=2;
+save_variable=true;
 %% ---------------------------------------Design code---------------------------------------------------------
-for k=1:size(V_cruise,2)    
+for k=1:size(V_cruise,2)
     for i=1:size(R,2)
         
         for j=1:size(RPM,2)
-            
+            wing_S(i,j,k)=2;
             solution_check=1;
             Vtip=(RPM(j)).*(2*pi.*R(i)/60);
-            fprintf('%4.3f RPM- %4.3f radius-%4.3f vtip:%4.3f \n',Nb, RPM(j), R(i), Vtip);
+            fprintf('Nb:%4.3f RPM- %4.3f radius-%4.3f vtip:%4.3f V_cruise:%4.3f\n',Nb, RPM(j), R(i), Vtip,V_cruise(k));
     %-------ROTOR PARAMETERS--------------------------------------------------------------------------------------------------%
             c(i,j,k) =R(i)/AR;%chord
             omega(i,j,k) = Vtip/R(i);%angular velocity
@@ -81,9 +81,10 @@ for k=1:size(V_cruise,2)
             error=100;%arbitrary value of error for initialization
             batt_reserve=0.85;% 15% battery reserve
             No_of_battery=2;% no of batteries each side
-            fprintf(".");
+            % fprintf(".");
             Nominal_volt=3.6*S_battery; %Nominal voltage of the entire one battery(cells in series)
-            while( error>0.2 )
+            gibrish=0;
+            while( error>0.2 & n<25 & gibrish<1)
                 count_k=0;
     %-----------Thrust and Power calculation using momentum theory(hover)-----------------------------------------------------
                 Ct=GW(n)*9.81/nondt;%considering thrust equal to weight for hover
@@ -98,7 +99,7 @@ for k=1:size(V_cruise,2)
                 k_max = length(theta0);
                 found = false;
                 
-                while k_min <= k_max
+                while k_min <= k_max & gibrish<1
                     k_mid = floor((k_min + k_max) / 2);
                     % fprintf("kmin= %4.3f kmid= %4.3f kmax= %4.3f \n", k_min,k_mid,k_max);
                      % fprintf("theta: %4.3f \n",theta0); 
@@ -108,7 +109,8 @@ for k=1:size(V_cruise,2)
     
                     %____________________________ROTOR OPT__________
                     try
-    
+                    % fprintf("cal");
+                    fprintf(k_mid);
                     [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
                         Rotor_opt(R(i), c(i,j,k), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                         %2 is for airfoil
@@ -116,10 +118,26 @@ for k=1:size(V_cruise,2)
                     %------------BEMT------------------------------------
                      % [thrust_1,power_1,torque_1,theta_1,err_1,FM,BL,mech_power]=BEMT(R_fr(i),Ct,Nb_fr,c_fr(i,j,k),Vtip_fr(j),a,GW(n),trans_loss,nondp,motor_efficiency,nondt,theta0(k_mid),electrical_loss);
                     catch
-                        continue
+                        continue;
                     end
     
-    
+                    % if power_1 <0
+                    %     gibrish=1;
+                    %     fprintf("negative power error");
+                    %     k_max = k_mid - 1;
+                    %     thrust_h(i,j,k) = 0;
+                    %     power_h(i,j,k) = 0;
+                    %     torque_h(i,j,k) = 0;
+                    %     C_P(i,j,k) = 0;
+                    %     C_T(i,j,k)= 0;
+                    %     theta_h(i,j,k) = theta0(k_mid);
+                    %     err(i,j,k) = 0;
+                    %     power_mech(i,j,k) = 0;
+                    %     count_k = k_mid;
+                    %     found = false;
+                    %     continue;
+                    % end
+                    
                     % Check the error condition
                     if err_1 > 5 
                         % Condition is satisfied, so move left to find a smaller k
@@ -144,6 +162,9 @@ for k=1:size(V_cruise,2)
                         % Profile_power(i,j,k) = 0;
                         % Induced_power(i,j,k) = 0;
                     end
+                end
+                if gibrish>1
+                    continue;
                 end
     %% -----------------------------Cruise performance of the rotor--------------------------------
                 k_min2 = 1000;
@@ -295,7 +316,7 @@ for k=1:size(V_cruise,2)
                 % P_cruise_endurance(i,j,k)= Thrust_cruise(i,j,k)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j,k)/(rho*A*V_endu_cruise^2)));
                 power_endu(i,j,k)= P_cruise_endurance(i,j,k)*N_rotors_cruise;
                 e_section_9(i,j,k)=power_endu(i,j,k)*T9; %Joules
-                Cl_req(i,j,k)= GW(n)/2*g/(0.5*rho*V_endu_cruise^2*wing_S);
+                Cl_req(i,j,k)= GW(n)/2*g/(0.5*rho*V_endu_cruise^2*wing_S(i,j,k));
     
     %-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
                 e_section_10(i,j,k)=e_section_5(i,j,k);
@@ -388,18 +409,18 @@ for k=1:size(V_cruise,2)
     %-----------Wings Weight ref:https://core.ac.uk/download/pdf/12983145.pdf-----------------------------------------------------------------------------------------------------%
                 % Configuration is tandem wing 
                 
-                wing_S=1/2*GW(n)*g*2/(wing_Cl_design*V_cruise(k)^2*rho); %wing area for a particular Cl
-                wing_b=sqrt(wing_AR*wing_S);
-                wing_root_chord=wing_S/(1+wing_taper_ratio)*2/wing_b;
+                wing_S(i,j,k)=1/2*GW(n)*g*2/(wing_Cl_design*V_cruise(k)^2*rho); %wing area for a particular Cl
+                wing_b(i,j,k)=sqrt(wing_AR*wing_S(i,j,k));
+                wing_root_chord=wing_S(i,j,k)/(1+wing_taper_ratio)*2/wing_b(i,j,k);
     
-                Ngust = (1 + 6.3 * wing_AR * wing_S * V_cruise(k) * m_to_ft^3) / (GW(n) * kg_to_lb) / (2 + wing_AR)/6;
+                Ngust = (1 + 6.3 * wing_AR * wing_S(i,j,k) * V_cruise(k) * m_to_ft^3) / (GW(n) * kg_to_lb) / (2 + wing_AR)/6;
                 Nmanu = max(2.5, 2.1 + 10900 / (4530 + GW(n) * kg_to_lb));
                 Ngust_ult = 1.5 * Ngust;
                 Nmanu_ult = 1.65 * Nmanu;
                 Nult = max(Nmanu_ult, Ngust_ult);
                 % Wing Weight (converted to metric)
-                m_wing = 0.6*(4.22 * wing_S * m_to_ft^2 + 1.642 * (10^-6) * Nult * (wing_b * m_to_ft)^3 * (1 + 2 * wing_taper_ratio) * ...
-                          (GW(n) * (mempty) * kg_to_lb^2)^0.5 / (tc_ratio * wing_S * m_to_ft^2 * (1 + wing_taper_ratio))) / kg_to_lb*.8;
+                m_wing = 0.6*(4.22 * wing_S(i,j,k) * m_to_ft^2 + 1.642 * (10^-6) * Nult * (wing_b(i,j,k) * m_to_ft)^3 * (1 + 2 * wing_taper_ratio) * ...
+                          (GW(n) * (mempty) * kg_to_lb^2)^0.5 / (tc_ratio * wing_S(i,j,k) * m_to_ft^2 * (1 + wing_taper_ratio))) / kg_to_lb*.8;
                 
                 % Fuselage Weight (converted to metric)
                 % W_fuselage = 0.0737 * (2 * (D_fuselage * m_to_ft) * (v_cruise * m_to_ft)^0.338 * (L_fuselage * m_to_ft)^0.857 * ...
@@ -425,13 +446,13 @@ for k=1:size(V_cruise,2)
                 m=m+1;
                 n=n+1;
                 GW(n) = mgross(i,j,k);
-                fprintf("current total mass :%4.3f \n",GW(n));
+                % fprintf("current total mass :%4.3f \n",GW(n));
                 error= abs(GW(n)-GW(m));
                 % if(error<=0.01)
                 %     power_final(i,j,k)=power_1(count); 
                 %     thrust_final(i,j,k)=
             end
-            if (solution_check==1)
+            if (solution_check==1 & gibrish<1)
                 V1(i,j,k) = R(i);% radius
                 V2(i,j,k) = Vtip;%tip speed
                 V3(i,j,k) = thrust_total(i,j,k);%total thrust
@@ -448,9 +469,9 @@ for k=1:size(V_cruise,2)
                 O7(i,j,k) = (thrust_total(i,j,k)/N_rotors)./(pi.*V1(i,j,k).^2);%disk loading(N/m^2)
                 O8(i,j,k) = power_mech(i,j,k);
             end
-            
-            save=false;
-                if save==true
+            fprintf("Total mass :%4.3f \n",GW(n));
+            save_file=false;
+                if save_file==true
                            % Create a table with the variables
                 data = table({'Number of Blades', Nb;'NumberOfRotors', N_rotors;  'Radius', V1(i,j,k); 'TipSpeed', V2(i,j,k); 
                   'TotalThrust', V3(i,j,k); 'Extra thrust at hover', V4(i,j,k); 
@@ -488,6 +509,28 @@ for k=1:size(V_cruise,2)
         end
     end
 end
+%% -----------------------------------Saving Variable data------------------------------------
+if save_variable
+    % Check if T9 and V_endu_cruise exist
+    if exist('T9', 'var') && exist('V_endu_cruise', 'var')
+        % Ensure both are scalars
+        if isscalar(T9) && isscalar(V_endu_cruise)
+            % Replace '.' with '_' in file-safe names
+            T9_str = strrep(sprintf('%.2f', T9/60), '.', '_');
+            Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
+            filename = sprintf('T_%s_Vendu_%s.mat', T9_str, Vendu_str);
+
+            save(filename);  % Saves all workspace variables
+            fprintf('Variables saved to %s\n', filename);
+        else
+            error('T9 and V_endu_cruise must be scalars to name the file.');
+        end
+    else
+        error('T9 and/or V_endu_cruise are not defined.');
+    end
+end
+
+
 %% ------------------------------------Design Trade study--------------------
 % set(groot,'defaultLineLineWidth',3);
 % set(groot,'defaultAxesFontSize',16);
