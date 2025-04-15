@@ -165,6 +165,8 @@ for k=1:size(V_cruise,2)
                     count_k = k_mid;
                     found = false;
                     GW(n)=0;
+                    Power_total_hover(i,j,k)=0;
+                    power_cruise(i,j,k)=0;
                 end
                 k_min2 = 1000;
                 k_max2 = RPM(j);
