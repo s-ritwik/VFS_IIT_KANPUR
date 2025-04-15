@@ -1,8 +1,60 @@
-
+%% LOAD DATASET ACCCORDINGLY T_60 means , T9 = 60 mins ie 60 mins endurance for section 9
+load('');
+%%
 % Meshgrid of R and RPM
 [R_mesh, RPM_mesh] = meshgrid(R, RPM);  % R: (1x4), RPM: (1x4)
 v_labels = squeeze(V_cruise);          % V_cruise: (1x5), get as column vector
 colors = lines(length(V_cruise));      % Distinct colors for each surface
+%% - line plot 
+% Power hover
+i = 3;
+
+% Extract RPM and V_cruise
+rpm_values = squeeze(RPM);         % (1x4)
+v_cruise_values = squeeze(V_cruise); % (1x5)
+
+% Prepare color set
+colors = lines(length(v_cruise_values));
+
+% Plot setup
+figure; hold on;
+
+for k = 1:length(v_cruise_values)
+    % Extract Power_total_hover for fixed R(i), all RPMs, and V_cruise(k)
+    y_vals = squeeze(Power_total_hover(i,:,k));  % (1x4)
+    plot(rpm_values, y_vals, '-o', 'LineWidth', 2, 'Color', colors(k,:), ...
+         'DisplayName', sprintf('V_{cruise} = %.1f m/s', v_cruise_values(k)));
+end
+
+xlabel('Rotor RPM');
+ylabel('Total Hover Power (W)');
+title(sprintf('Hover Power vs RPM at R = %.2f m', R(i)));
+legend('Location', 'northwest');
+grid on;
+
+% Power cruise
+
+% Extract RPM and V_cruise
+rpm_values = squeeze(RPM);         % (1x4)
+v_cruise_values = squeeze(V_cruise); % (1x5)
+% Prepare color set
+colors = lines(length(v_cruise_values));
+
+% Plot setup
+figure; hold on;
+
+for k = 1:length(v_cruise_values)
+    % Extract Power_total_hover for fixed R(i), all RPMs, and V_cruise(k)
+    y_vals = squeeze(power_cruise(i,:,k));  % (1x4)
+    plot(rpm_values, y_vals, '-o', 'LineWidth', 2, 'Color', colors(k,:), ...
+         'DisplayName', sprintf('V_{cruise} = %.1f m/s', v_cruise_values(k)));
+end
+
+xlabel('Rotor RPM');
+ylabel('Total Cruise Power (W)');
+title(sprintf('Cruise Power vs RPM at R = %.2f m', R(i)));
+legend('Location', 'northwest');
+grid on;
 
 %% === Plot 1: Gross Weight ===
 figure; hold on;
@@ -116,7 +168,7 @@ end
 xlabel('Rotor Radius (m)');
 ylabel('Rotor RPM');
 zlabel('Power Loading (kg/W)');
-zlim([19,22]);
+zlim([0.03,0.06]);
 title('Power Loading vs R & RPM for Various V_{cruise}');
 legend(arrayfun(@(v) sprintf('V_{cruise} = %.1f m/s', v), v_labels, 'UniformOutput', false), ...
        'Location', 'northeastoutside');
@@ -134,7 +186,7 @@ end
 xlabel('Rotor Radius (m)');
 ylabel('Rotor RPM');
 zlabel('Collective (\theta_0 in deg)');
-zlim([19,22]);
+zlim([18,30]);
 title('Collective vs R & RPM for Various V_{cruise}');
 legend(arrayfun(@(v) sprintf('V_{cruise} = %.1f m/s', v), v_labels, 'UniformOutput', false), ...
        'Location', 'northeastoutside');
