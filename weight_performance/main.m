@@ -17,8 +17,8 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=0.8:0.1:1.1;%(in meters)
-RPM= 2000:1000:5000;
+R=1;%(in meters)
+RPM= 2000:250:3500;
 V_cruise=40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
