@@ -18,8 +18,8 @@ Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
 R=1;%(in meters)
-RPM= 2000:250:3500;
-V_cruise=40:10:80;
+RPM= 3000%:250:3500;
+V_cruise=55%40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
@@ -29,16 +29,16 @@ Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
 T9=80*60; %1 hr
-%% -------------- Wing parameters ----------------------------------------
+%% -------------- rotor parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
-theta0  =(10:0.01:30)*pi/180;% collective
+theta0  =(10:0.01:50)*pi/180;% collective
 thetatw = -18;% twist rate
 S_battery =12; %no of cells in series in a battery(44.4v/3.7v)
 %% ----------------------wing-----------------------------------
-wing_AR=12;% aspect ratio of wing
-wing_taper_ratio=0.4; 
+wing_AR=8;% aspect ratio of wing
+wing_taper_ratio=1; 
 tc_ratio = 0.25; % Thickness to chord ratio
-wing_Cl_design=0.9;% Cl_design
+wing_Cl_design=0.5;% Cl_design
 %% --------------------------------Losses & Efficiencies-------------------------------------------------------------%
 trans_loss=1.03;%transmission losses(2%)
 electrical_loss=1.02;%electrical losses(2%)
@@ -427,9 +427,9 @@ for k=1:size(V_cruise,2)
                 % W_fuselage = 0.0737 * (2 * (D_fuselage * m_to_ft) * (v_cruise * m_to_ft)^0.338 * (L_fuselage * m_to_ft)^0.857 * ...
                 %               (GW(n) * kg_to_lb * Nult)^0.286)^1.1 / kg_to_lb;
     %-----------HYDROGEN FUEL CELL-----------------------------------------------------------------------------------------------------%
-                sed_hydrogen = 800; %Watt hr/Kg(specific energy density of an efficient Hydrogen cell)
+                sed_hydrogen = 16000; %Watt hr/Kg(specific energy density of an efficient Hydrogen cell)
                 sed_battery= 350; % Watt hr
-                m_hydrogen(i,j,k) =energy_hydrogen(i,j,k) / sed_hydrogen;%kg
+                m_hydrogen(i,j,k) =energy_hydrogen(i,j,k) / sed_hydrogen/0.05;%kg
                 m_battery(i,j,k)= energy_battery(i,j,k) / sed_battery;
                 mfuel_system(i,j,k)=45;%power_cruise(i,j,k)/1000*2.5;
                 mhydrogen_fuel_cell(i,j,k)= mfuel_system(i,j,k)+ m_hydrogen(i,j,k);
@@ -447,7 +447,7 @@ for k=1:size(V_cruise,2)
                 m=m+1;
                 n=n+1;
                 GW(n) = mgross(i,j,k);
-                % fprintf("current total mass :%4.3f \n",GW(n));
+                fprintf("current total mass :%4.3f \n",GW(n));
                 error= abs(GW(n)-GW(m));
                 % if(error<=0.01)
                 %     power_final(i,j,k)=power_1(count); 
