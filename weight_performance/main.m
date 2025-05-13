@@ -434,9 +434,9 @@ for k=1:size(V_cruise,2)
     %-----------HYDROGEN FUEL CELL-----------------------------------------------------------------------------------------------------%
                 sed_hydrogen = 16000; %Watt hr/Kg(specific energy density of an efficient Hydrogen cell)
                 sed_battery= 350; % Watt hr
-                m_hydrogen(i,j,k) =energy_hydrogen(i,j,k) / sed_hydrogen/0.05;%kg
+                m_hydrogen(i,j,k) =energy_hydrogen(i,j,k) / sed_hydrogen/0.15;%kg
                 m_battery(i,j,k)= energy_battery(i,j,k) / sed_battery;
-                mfuel_system(i,j,k)=45;%power_cruise(i,j,k)/1000*2.5;
+                mfuel_system(i,j,k)=132;%power_cruise(i,j,k)/1000*2.5;
                 mhydrogen_fuel_cell(i,j,k)= mfuel_system(i,j,k)+ m_hydrogen(i,j,k);
                 mfuel_cell(i,j,k)= mhydrogen_fuel_cell(i,j,k)+m_battery(i,j,k);
                 
