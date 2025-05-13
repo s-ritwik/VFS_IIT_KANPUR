@@ -1,0 +1,63 @@
+Model: Fuselage_assembly_1 v1.SLDASM
+Project name: Project(1)
+Config name: Default
+Project path: C:\Users\ritwi\OneDrive - IIT Kanpur\college\SEMESTER DATA\SEM 8\AE630 Autonomous unmanned systems\VFS_IIT_KANPUR\CAD\1\1.xmlconfig
+Status: Finished
+
+Number of cells:
+    Total cells: 44243
+    Fluid cells: 44243
+    Solid cells: 354
+    Fluid cells containing solids: 452
+
+
+Geometry preparation finished: 02:47:28
+Geometry preparation time: 00:00:01
+Solver CPU time: 00:00:25
+Iterations: 129
+Travels: 1.82366
+Physical time: 0.000000e+00 s
+Current time step: 0.000000e+00 s
+Last iteration finished: 02:47:51
+CPU time per last iteration: 00:00:01
+CPU time left: 00:00:00
+Iterations per 1 travel: 71
+
+Goals
+    Name                          | Unit (SI)           | Value           | Progress  | Critetia        | Delta           | Use in convergence
+    SG Average Static Pressure 1  | pressure and stress |       101150.74 |     100.0 |            5.55 |            1.93 | On
+    SG Average Total Pressure 2   | pressure and stress |       101150.74 |     100.0 |            5.55 |            1.93 | On
+    SG Average Dynamic Pressure 3 | pressure and stress |            0.00 |     100.0 |            0.00 |            0.00 | On
+    Drag bottom                   | force               |           54.64 |     100.0 |            0.93 |            0.10 | On
+    Lift down wing                | force               |          -12.14 |     100.0 |            0.58 |            0.36 | On
+    SG Average Static Pressure 6  | pressure and stress |       101108.98 |     100.0 |            1.77 |            1.69 | On
+    SG Average Total Pressure 7   | pressure and stress |       101108.98 |     100.0 |            1.77 |            1.69 | On
+    SG Average Dynamic Pressure 8 | pressure and stress |            0.00 |     100.0 |            0.00 |            0.00 | On
+    Drag up                       | force               |           31.36 |     100.0 |            0.75 |            0.07 | On
+    Lift up wing                  | force               |           44.40 |     100.0 |            1.68 |            0.97 | On
+    Drag body                     | force               |           61.35 |     100.0 |            3.99 |            0.20 | On
+
+Project details
+    Default fluids: Air
+    Analysis type: External
+    Heat conduction in solids: Off
+    Radiation: Off
+    Time dependent: Off
+    Gravitational effects: Off
+    Flow type: Laminar and turbulent
+    Cavitation: Off
+    Hign Mach number flow: On
+    Free surface: Off
+    Structural: Off
+    Electromagnetism: Off
+
+System info
+    Product: Flow Simulation 2024  x64 / 6545 / SOLVER ver. efd_dev.5608_04.02.2022+HMN_Inlet_Rework_V1+HMN_Inlet_Rework_V2
+    CAD version: SOLIDWORKS 2024 SP5.0
+    Computer name: RITWIK-LENOVO
+    User name: ritwi
+    Operating system: Windows 11 (or higher) (Version 10.0.22631)
+    Processors: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
+    Number of cores: 16
+    Memory: 7012 MB / 16235 MB
+

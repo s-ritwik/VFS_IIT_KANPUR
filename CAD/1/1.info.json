@@ -1,0 +1,177 @@
+{
+    "version": 0,
+    "model_name": "Fuselage_assembly_1 v1.SLDASM",
+    "project_name": "Project(1)",
+    "config_name": "Default",
+    "project_path": "C:\\Users\\ritwi\\OneDrive - IIT Kanpur\\college\\SEMESTER DATA\\SEM 8\\AE630 Autonomous unmanned systems\\VFS_IIT_KANPUR\\CAD\\1\\1.xmlconfig",
+    "finished": true,
+    "mesh": {
+        "cells_total": 44243,
+        "cells_fluid": 44243,
+        "cells_solid": 354,
+        "cells_fluid_containing_solid": 452
+    },
+    "telemetry": {
+        "prepare_geometry_finished": "02:47:28+0530",
+        "prepare_geometry_total_time": 1,
+        "cpu_time_solver_total": 25,
+        "iteration": 129,
+        "travel": 1.8236641482029132,
+        "phys_time": 0.0,
+        "time_step": 0.0,
+        "last_iteration_finished": "02:47:51+0530",
+        "cpu_time_per_last_iter": 1,
+        "cpu_time_left": 0,
+        "iterations_per_travel": 71
+    },
+    "goals": [
+        {
+            "goal": {
+                "name": "SG Average Static Pressure 1",
+                "unit": "pressure and stress",
+                "value": 101150.73689136548,
+                "progress": 100.0,
+                "criteria": 5.546155424887983,
+                "delta": 1.9291457762010396,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "SG Average Total Pressure 2",
+                "unit": "pressure and stress",
+                "value": 101150.73689136548,
+                "progress": 100.0,
+                "criteria": 5.546155424887983,
+                "delta": 1.9291457762010396,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "SG Average Dynamic Pressure 3",
+                "unit": "pressure and stress",
+                "value": 0.0,
+                "progress": 100.0,
+                "criteria": 0.0,
+                "delta": 0.0,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "Drag bottom",
+                "unit": "force",
+                "value": 54.63806933504191,
+                "progress": 100.0,
+                "criteria": 0.9291309215839868,
+                "delta": 0.09630237905712846,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "Lift down wing",
+                "unit": "force",
+                "value": -12.135480855959612,
+                "progress": 100.0,
+                "criteria": 0.5849244715433066,
+                "delta": 0.36233633643783847,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "SG Average Static Pressure 6",
+                "unit": "pressure and stress",
+                "value": 101108.9791816918,
+                "progress": 100.0,
+                "criteria": 1.7709384643178783,
+                "delta": 1.6915958419413073,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "SG Average Total Pressure 7",
+                "unit": "pressure and stress",
+                "value": 101108.9791816918,
+                "progress": 100.0,
+                "criteria": 1.7709384643178783,
+                "delta": 1.6915958419413073,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "SG Average Dynamic Pressure 8",
+                "unit": "pressure and stress",
+                "value": 0.0,
+                "progress": 100.0,
+                "criteria": 0.0,
+                "delta": 0.0,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "Drag up",
+                "unit": "force",
+                "value": 31.357712342525502,
+                "progress": 100.0,
+                "criteria": 0.7527633865279888,
+                "delta": 0.07480589899228107,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "Lift up wing",
+                "unit": "force",
+                "value": 44.395908325300894,
+                "progress": 100.0,
+                "criteria": 1.684905435869926,
+                "delta": 0.969103074353562,
+                "use_in_convergence": true
+            }
+        },
+        {
+            "goal": {
+                "name": "Drag body",
+                "unit": "force",
+                "value": 61.34678692566861,
+                "progress": 100.0,
+                "criteria": 3.988125013413759,
+                "delta": 0.20037273236827247,
+                "use_in_convergence": true
+            }
+        }
+    ],
+    "settings": {
+        "default_fluids": [
+            "Air"
+        ],
+        "analysis_type": "external",
+        "heat_conduction_in_solids": false,
+        "radiation": false,
+        "time_dependent": false,
+        "gravity": false,
+        "flow_type": "laminar and turbulent",
+        "cavitation": false,
+        "high_mach_number": true,
+        "free_surface": false,
+        "structural": false,
+        "electromagnetism": false
+    },
+    "system_info": {
+        "product_name": "Flow Simulation 2024  x64 / 6545 / SOLVER ver. efd_dev.5608_04.02.2022+HMN_Inlet_Rework_V1+HMN_Inlet_Rework_V2",
+        "cad_version": "SOLIDWORKS 2024 SP5.0",
+        "computer_name": "RITWIK-LENOVO",
+        "user_name": "ritwi",
+        "os": "Windows 11 (or higher) (Version 10.0.22631)",
+        "cpu": "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+        "number_of_cores": 16,
+        "memory_avail": 7012,
+        "memory_total": 16235
+    }
+}

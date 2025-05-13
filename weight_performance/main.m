@@ -278,14 +278,14 @@ for k=1:size(V_cruise,2)
     
     %-----------Section 2 : 15 seconds hover HIGE (i havent considered HIG yet)--------------------------------------------------------------
                 e_section_2(i,j,k)= Power_total_hover(i,j,k)*15/1.5; %watt (every power is in watt)
-    
+                time_section_2(i,j,k)= 15;
     %-----------Section 3 : vertical Climb from 0m to 60m @ 0.76m/s : ~79 seconds of climb--------------------------------------------------------------
                 p_section_3(i,j,k)= N_rotors*Pclimb(i,j,k);
                 e_section_3(i,j,k)=N_rotors*Pclimb(i,j,k)*60/Vc/motor_efficiency;
-    
+                time_section_3(i,j,k)=60/Vc;
     %-----------Section 4 : 10 seconds hover HOGE--------------------------------------------------------------
                 e_section_4(i,j,k)=Power_total_hover(i,j,k)*10;
-    
+                time_section_4(i,j,k)=10;
     %-----------Section 5 : 9deg climb--------------------------------------------------------------
                 %Power=D*V_cruise_5 + W*sin(9)*V_cruise_5=L/L_D*V +Wsin(9)*V
                 %where L=Wcos(9)
@@ -296,20 +296,20 @@ for k=1:size(V_cruise,2)
                     fprintf(" Climb performance failed")
                     power_5(i,j,k)=N_rotors_cruise* 0.5*thrust_section_5(i,j,k)/N_rotors_cruise*V_cruise_climb*(1+sqrt(2*thrust_section_5(i,j,k)/N_rotors_cruise/(rho*A*V_cruise_climb^2)));
                 end
-                time_5(i,j,k)=(300-60)/V_cruise_climb;
-                e_section_5(i,j,k)= power_5(i,j,k)*time_5(i,j,k);
+                time_section_5(i,j,k)=(300-60)/V_cruise_climb;
+                e_section_5(i,j,k)= power_5(i,j,k)*time_section_5(i,j,k);
     
     
     %-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
-                t_section_6(i,j,k)= 30000/V_cruise(k);
-                e_section_6(i,j,k)= power_cruise(i,j,k)*t_section_6(i,j,k);
+                time_section_6(i,j,k)= 30000/V_cruise(k);
+                e_section_6(i,j,k)= power_cruise(i,j,k)*time_section_6(i,j,k);
                 
     %-----------Section 7 : V descent @-7.6m/s from 300m to 30m (NO POWER)--------------------------------------------------------------
                 e_section_7(i,j,k)=0;
-    
+                time_section_7(i,j,k)=(300-30)/7.6;
     %-----------Section 8 : 30 seconds hover @30m--------------------------------------------------------------
                 e_section_8(i,j,k)=Power_total_hover(i,j,k)*30;
-    
+                time_section_8(i,j,k)=30;
     %-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
     %           Basically all the energy that you have left should be utitlised
     %           here to hover for max T9 seconds.
@@ -321,26 +321,31 @@ for k=1:size(V_cruise,2)
     
     %-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
                 e_section_10(i,j,k)=e_section_5(i,j,k);
+                time_section_10(i,j,k)= time_section_5(i,j,k);
                 
-    
     %-----------Section 11 : Cruise back approx 30km--------------------------------------------------------------
                 e_section_11(i,j,k)=e_section_6(i,j,k); %Joules
-    
+                time_section_11(i,j,k)=time_section_6(i,j,k);
     
     %-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
                 e_section_12(i,j,k)=0;
-    
+                time_section_12(i,j,k)=(300-60)/7.6;
     %-----------Section 13 : HOGE @60m for 10 seconds--------------------------------------------------------------
                 e_section_13(i,j,k)=Power_total_hover(i,j,k)*10;
-    
+                time_section_13(i,j,k)= 10;
     
     %-----------Section 14 : Vertical descent @-0.5m/s from 60m to HIGE--------------------------------------------------------------
                 e_section_14(i,j,k)= N_rotors*Pdescent(i,j,k)*60/Vd/motor_efficiency;
-    
+                time_section_14(i,j,k)=60/Vd;
     %-----------Section 15 : HIGE for 15 seconds--------------------------------------------------------------
                 e_section_15(i,j,k)= Power_total_hover(i,j,k)*15*0.7;
-    
+                time_section_15(i,j,k)=15;
     %% -------------------- ENERGY CALCULATIONS------------------------------------------------------------------
+                % Endurance
+                endurance(i,j,k)=time_section_2(i,j,k)+time_section_3(i,j,k)+time_section_4(i,j,k)+time_section_5(i,j,k)+time_section_6(i,j,k)+...
+                    time_section_7(i,j,k)+time_section_8(i,j,k)+time_section_10(i,j,k)+time_section_11(i,j,k)+time_section_12(i,j,k)+time_section_13(i,j,k)+...
+                    time_section_14(i,j,k)+time_section_15(i,j,k)+T9;
+    
                 % Battery powered ( upto 30kg)
                 energy_init_battery(i,j,k)= e_section_3(i,j,k) + e_section_4(i,j,k)+e_section_8(i,j,k)+e_section_13(i,j,k) + e_section_14(i,j,k) + e_section_15(i,j,k);
                 % Hydrogen powered
