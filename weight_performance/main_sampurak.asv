@@ -16,8 +16,8 @@ R = 287;%universal gas constant(KJ/(kgmol-k))
 a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
-%% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1;%(in meters)
+%% --------------------------------Baseline Parameters: Indipendant variables---------------------------------------------------------------%
+R=1;%(in meters) % FIXEDDDD__________________
 RPM= 3000%:250:3500;
 V_cruise=55%40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
@@ -28,11 +28,11 @@ Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
-T9=80*60; %1 hr
+T9= 90*60; %1 hr
 %% -------------- rotor parameters ----------------------------------------
 AR = 12;% aspect ratio of rotor
 theta0  =(10:0.01:50)*pi/180;% collective
-thetatw = -20;% twist rate
+thetatw = -18;% twist rate
 S_battery =12; %no of cells in series in a battery(44.4v/3.7v)
 %% ----------------------wing-----------------------------------
 wing_AR=8;% aspect ratio of wing
@@ -53,6 +53,7 @@ m_to_ft = 3.28084; % meters to feet
 g=9.81;
 save_variable=true;
 %% ---------------------------------------Design code---------------------------------------------------------
+counter = 0; % keep outside loop
 for k=1:size(V_cruise,2)
     for i=1:size(R,2)
         
@@ -106,13 +107,13 @@ for k=1:size(V_cruise,2)
                      % fprintf("theta: %4.3f \n",theta0); 
                     %_____________________________AIR=1 for naca4412 AND AIR=2
                     %FOR NACA 653618
-                    % Call the Rotor_opt function
+                    % Call the Rotor_opt_sampurak function
     
                     %____________________________ROTOR OPT__________
                     try
     
                     [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
-                        Rotor_opt(R(i), c(i,j,k), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
+                        Rotor_opt_sampurak(R(i), c(i,j,k), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                         %2 is for airfoil
                     
                     %------------BEMT------------------------------------
@@ -179,7 +180,7 @@ for k=1:size(V_cruise,2)
                     nondp2=rho*A*(omega2(i,j,k)*R(i))^3;%non-dimentional making terms for pressure
                     % for cruise fixed wing
                     [thrust_2, power_2, torque_2, theta_2, err_2, FM2, BL2, mech_power2,CP2,CT2] = ...
-                        Rotor_opt(R(i), c(i,j,k), thetatw, k_mid2, Nb, 3, GW(n)/L_by_D/N_rotors_cruise, trans_loss, nondp2, motor_efficiency, nondt2, theta_h(i,j,k), electrical_loss, rho,1);
+                        Rotor_opt_sampurak(R(i), c(i,j,k), thetatw, k_mid2, Nb, 3, GW(n)/L_by_D/N_rotors_cruise, trans_loss, nondp2, motor_efficiency, nondt2, theta_h(i,j,k), electrical_loss, rho,1);
                     if err_2 > 5
                         k_max2 = k_mid2 - 1;
                         err2(i,j,k)= err_2;
@@ -205,7 +206,7 @@ for k=1:size(V_cruise,2)
                 %     nondp3=rho*A*(omega3(i,j,k)*R(i))^3;%non-dimentional making terms for pressure
                 %     % for cruise fixed wing
                 %     [thrust_3, power_3, torque_3, theta_3, err_3, FM3, BL3, mech_power3,CP3,CT3] = ...
-                %         Rotor_opt(R(i), c(i,j,k), thetatw, k_mid3, Nb, 3, thrust_section_5(i,j,k)/g/N_rotors_cruise, trans_loss, nondp3, motor_efficiency, nondt3, theta_h(i,j,k), electrical_loss, rho,1);
+                %         Rotor_opt_sampurak(R(i), c(i,j,k), thetatw, k_mid3, Nb, 3, thrust_section_5(i,j,k)/g/N_rotors_cruise, trans_loss, nondp3, motor_efficiency, nondt3, theta_h(i,j,k), electrical_loss, rho,1);
                 %     if err_3 > 5
                 %         k_max3 = k_mid3 - 1;
                 %         err3(i,j,k)= err_3;
@@ -314,6 +315,7 @@ for k=1:size(V_cruise,2)
     %           Basically all the energy that you have left should be utitlised
     %           here to hover for max T9 seconds.
                 P_cruise_endurance(i,j,k)=climb(thrust_h(i,j,k)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j,k),V_endu_cruise,Vd);
+                eta = thrust_h(i,j,k)*V_endu_cruise/(P_cruise_endurance(i,j,k)*L_by_D);
                 % P_cruise_endurance(i,j,k)= Thrust_cruise(i,j,k)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j,k)/(rho*A*V_endu_cruise^2)));
                 power_endu(i,j,k)= P_cruise_endurance(i,j,k)*N_rotors_cruise;
                 e_section_9(i,j,k)=power_endu(i,j,k)*T9; %Joules
@@ -341,6 +343,10 @@ for k=1:size(V_cruise,2)
                 e_section_15(i,j,k)= Power_total_hover(i,j,k)*15*0.7;
                 time_section_15(i,j,k)=15;
     %% -------------------- ENERGY CALCULATIONS------------------------------------------------------------------
+                % Total Energy
+                total_energy(i,j,k) = e_section_2(i,j,k) + e_section_3(i,j,k) + e_section_4(i,j,k) + e_section_5(i,j,k) + e_section_6(i,j,k) + e_section_7(i,j,k) + e_section_8(i,j,k) +...
+                 e_section_9(i,j,k) + e_section_10(i,j,k) + e_section_11(i,j,k) + e_section_12(i,j,k) + e_section_13(i,j,k) + e_section_14(i,j,k) + e_section_15(i,j,k);   
+    
                 % Endurance
                 endurance(i,j,k)=time_section_2(i,j,k)+time_section_3(i,j,k)+time_section_4(i,j,k)+time_section_5(i,j,k)+time_section_6(i,j,k)+...
                     time_section_7(i,j,k)+time_section_8(i,j,k)+time_section_10(i,j,k)+time_section_11(i,j,k)+time_section_12(i,j,k)+time_section_13(i,j,k)+...
@@ -355,7 +361,7 @@ for k=1:size(V_cruise,2)
                   
                 energy_hydrogen(i,j,k)=energy_init(i,j,k)/3600/batt_reserve; % Watt-hr energy after considering reserve;
                 energy_battery(i,j,k)=energy_init_battery(i,j,k)/3600/batt_reserve;
-                % energy(i,j,k) =(Power_total_hover(i,j,k)*(endurance)+Pclimb(i,j,k)*0.5/60+Pdescent(i,j,k)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
+                energy(i,j,k) =(Power_total_hover(i,j,k)*(endurance)+Pclimb(i,j,k)*0.5/60+Pdescent(i,j,k)*0.5/60)/batt_reserve;% energy supplied  by battery equals total power required for hover multiplied by the hover duration(in watt-hour)
                 energy_MJ_hydrogen(i,j,k) = energy_hydrogen(i,j,k)*(3600)*10^(-6);%energy in mega -joules(MJ)
     
     
@@ -439,7 +445,10 @@ for k=1:size(V_cruise,2)
                 mfuel_system(i,j,k)=132;%power_cruise(i,j,k)/1000*2.5;
                 mhydrogen_fuel_cell(i,j,k)= mfuel_system(i,j,k)+ m_hydrogen(i,j,k);
                 mfuel_cell(i,j,k)= mhydrogen_fuel_cell(i,j,k)+m_battery(i,j,k);
+                % mfuel_cell(i,j,k) = total_energy/(1000*3600*0.348061)
                 
+                
+
     %-----------FIXED--------------------------------------------------------------------------------------------------
                 m_avionics=0.05*mempty;% mass of avionics
                 manti_ice=0;%8*(GW(n)/1000);%mass of anti ice equipments
@@ -524,7 +533,9 @@ if save_variable
             % Replace '.' with '_' in file-safe names
             T9_str = strrep(sprintf('%.2f', T9/60), '.', '_');
             Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
-            filename = sprintf('T_%s.mat', T9_str, Vendu_str);
+            %filename = sprintf('T_%s.mat', T9_str, Vendu_str);
+            filename = sprintf('Design Point %.0f.mat', counter);   
+            counter = counter+1;
 
             save(filename);  % Saves all workspace variables
             fprintf('Variables saved to %s\n', filename);
