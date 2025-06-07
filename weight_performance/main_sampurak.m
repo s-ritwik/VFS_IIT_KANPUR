@@ -18,17 +18,17 @@ Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters: Indipendant variables---------------------------------------------------------------%
 R=1;%(in meters) % FIXEDDDD__________________
-RPM= 3000%:250:3500;
-V_cruise=55%40:10:80;
+RPM= 2000:200:5600;%4600%3000:200:6000;
+V_cruise= 50;%30:10:80;
 % --------------section 9 where you have to maximise T9---------------------------
-T9= 60%:20:120; %1 hr
+T9= 120;%60:10:120; %1 hr
 T9=T9.*60; %into seconds
-thetatw = -20:1:-18;% twist rate
+thetatw = -18;%-25:1:-15;% twist rate
 
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
-N_rotors_cruise=2; %no of motors/rotors active in cruise fixed wing mode
+N_rotors_cruise=8; %no of motors/rotors active in cruise fixed wing mode
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
@@ -38,7 +38,7 @@ theta0  =(10:0.01:50)*pi/180;% collective
 % thetatw = -18;% twist rate
 S_battery =12; %no of cells in series in a battery(44.4v/3.7v)
 %% ----------------------wing-----------------------------------
-wing_AR=8;% aspect ratio of wing
+wing_AR=10;% aspect ratio of wing
 wing_taper_ratio=1; 
 tc_ratio = 0.25; % Thickness to chord ratio
 wing_Cl_design=0.5;% Cl_design
@@ -54,7 +54,7 @@ mu=1.09;
 kg_to_lb = 2.20462; % kg to pounds
 m_to_ft = 3.28084; % meters to feet
 g=9.81;
-save_variable=false;
+save_variable=true;
 %% ---------------------------------------Design code---------------------------------------------------------
 counter = 0; % keep outside loop
 for k=1:size(V_cruise,2)
@@ -62,6 +62,9 @@ for k=1:size(V_cruise,2)
         
         for j=1:size(RPM,2)
             for l=1:size(thetatw,2)
+                disp([l,j,i,k]);
+                disp([size(thetatw,2),size(RPM,2),size(T9,2),size(V_cruise,2)]);
+                                
                 V_endu_cruise=V_cruise(k)*0.85;
                 wing_S(i,j,k,l)=2;
                 solution_check=1;
@@ -139,6 +142,7 @@ for k=1:size(V_cruise,2)
                             torque_h(i,j,k,l) = torque_1;
                             C_P(i,j,k,l) = CP;
                             C_T(i,j,k,l)= CT;
+                            F_M(i,j,k,l)= FM;
                             theta_h(i,j,k,l) = theta0(k_mid);
                             err(i,j,k,l) = err_1;
                             power_mech(i,j,k,l) = mech_power;
@@ -319,7 +323,7 @@ for k=1:size(V_cruise,2)
         %           Basically all the energy that you have left should be utitlised
         %           here to hover for max T9 seconds.
                     P_cruise_endurance(i,j,k,l)=climb(thrust_h(i,j,k,l)/N_rotors_cruise/L_by_D,rho,R,power_cruise_hover(i,j,k,l),V_endu_cruise,Vd);
-                    eta = thrust_h(i,j,k,l)*V_endu_cruise/(P_cruise_endurance(i,j,k,l)*L_by_D);
+                    eta(i,j,k,l) = thrust_h(i,j,k,l)*V_endu_cruise/(P_cruise_endurance(i,j,k,l)*L_by_D);
                     % P_cruise_endurance(i,j,k,l)= Thrust_cruise(i,j,k,l)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j,k,l)/(rho*A*V_endu_cruise^2)));
                     power_endu(i,j,k,l)= P_cruise_endurance(i,j,k,l)*N_rotors_cruise;
                     e_section_9(i,j,k,l)=power_endu(i,j,k,l)*T9(i); %Joules
@@ -426,7 +430,7 @@ for k=1:size(V_cruise,2)
                     % Configuration is tandem wing 
                     
                     wing_S(i,j,k,l)=1/2*GW(n)*g*2/(wing_Cl_design*V_cruise(k)^2*rho); %wing area for a particular Cl
-                    wing_b(i,j,k,l)=sqrt(wing_AR*wing_S(i,j,k,l));
+                    wing_b(i,j,k,l)=7;
                     wing_root_chord=wing_S(i,j,k,l)/(1+wing_taper_ratio)*2/wing_b(i,j,k,l);
         
                     Ngust = (1 + 6.3 * wing_AR * wing_S(i,j,k,l) * V_cruise(k) * m_to_ft^3) / (GW(n) * kg_to_lb) / (2 + wing_AR)/6;
@@ -530,27 +534,27 @@ for k=1:size(V_cruise,2)
     end
 end
 %% -----------------------------------Saving Variable data------------------------------------
-% if save_variable
-%     % Check if T9(i) and V_endu_cruise exist
-%     if exist('T9(i)', 'var') && exist('V_endu_cruise', 'var')
-%         % Ensure both are scalars
-%         if isscalar(T9(i)) && isscalar(V_endu_cruise)
-%             % Replace '.' with '_' in file-safe names
-%             T9_str = strrep(sprintf('%.2f', T9(i)/60), '.', '_');
-%             Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
-%             %filename = sprintf('T_%s.mat', T9_str, Vendu_str);
-%             filename = sprintf('Design Point %.0f.mat', counter);   
-%             counter = counter+1;
-% 
-%             save(filename);  % Saves all workspace variables
-%             fprintf('Variables saved to %s\n', filename);
-%         else
-%             error('T9 and V_endu_cruise must be scalars to name the file.');
-%         end
-%     else
-%         error('T9 and/or V_endu_cruise are not defined.');
-%     end
-% end
+ if save_variable
+    %Check if T9(i) and V_endu_cruise exist
+    if exist('T9', 'var') && exist('V_endu_cruise', 'var')
+        % Ensure both are scalars
+        if isscalar(T9(i)) && isscalar(V_endu_cruise)
+            % Replace '.' with '_' in file-safe names
+            T9_str = strrep(sprintf('%.2f', T9(i)/60), '.', '_');
+            Vendu_str = strrep(sprintf('%.2f', V_endu_cruise), '.', '_');
+            %filename = sprintf('T_%s.mat', T9_str, Vendu_str);
+            filename = sprintf('final_design_point.mat');   
+            counter = counter+1;
+
+            save(filename);  % Saves all workspace variables
+            fprintf('Variables saved to %s\n', filename);
+        else
+            error('T9 and V_endu_cruise must be scalars to name the file.');
+        end
+    else
+        error('T9 and/or V_endu_cruise are not defined.');
+    end
+end
 
 
 %% ------------------------------------Design Trade study--------------------
