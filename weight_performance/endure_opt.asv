@@ -3,8 +3,7 @@ clear;
 clear all;
 %% --------------------------------Mission requirements--------------------------------------------------------------%
 h=300; %m
-mpayload = 185; %(kg)payload 
-L_by_D=8; % estimated L/D ratio
+mpayload = 150; %(kg)payload 
 %% --------------------------------Atmosphere data-------------------------------------------------------------------%
 P0 = 1.01325*(10^5);%atmospheric pressure                  
 T0 = 288.16+15;%30 degrees(15 deg extra taken here for IRA)                              
@@ -17,22 +16,21 @@ a = sqrt(gama*R*T);%speed of sound
 Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
-R=1;%(in meters)
-RPM= 3000%:250:3500;
-V_cruise=55%40:10:80;
+R=0.99;%(in meters)
+RPM= 1400;%:250:3500;
+V_cruise=55;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
-N_rotors=8; %no of motors/rotors
-N_rotors_cruise=8; %no of motors/rotors active in cruise fixed wing mode
+N_rotors=4; %no of motors/rotors
+N_rotors_cruise=4; %no of motors/rotors active in cruise fixed wing mode
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
-V_cruise_climb=6; %section 5 climb vel 
 %% --------------section 9 where you have to maximise T9---------------------------
 T9=80*60; %1 hr
 %% -------------- rotor parameters ----------------------------------------
-AR = 12;% aspect ratio of rotor
-theta0  =(10:0.01:50)*pi/180;% collective
-thetatw = -20;% twist rate
+AR = 13.75;% aspect ratio of rotor
+theta0  =(0:0.01:50)*pi/180;% collective
+thetatw = -10;% twist rate
 S_battery =12; %no of cells in series in a battery(44.4v/3.7v)
 %% ----------------------wing-----------------------------------
 wing_AR=8;% aspect ratio of wing
@@ -71,8 +69,8 @@ for k=1:size(V_cruise,2)
     %-------WEIGHT INITIALIZATION-----------------------------------------------------------------------------------------%
             m=1;%first index initialization
             n=2;% second index initialization
-            GW(m) =1;%(KG) 
-            mempty =24;%empty weight(kg)
+            GW(m) =150;%(KG) 
+            mempty =0;%empty weight(kg)
             GW(n) = mempty+mpayload;%total gross weight
             pre_weight=GW(n);%intial gross weight assumption
             A=pi*(R(i)^2);%area of disk(for both front and back it will be same)
@@ -112,7 +110,7 @@ for k=1:size(V_cruise,2)
                     try
     
                     [thrust_1, power_1, torque_1, theta_1, err_1, FM, BL, mech_power,CP,CT] = ...
-                        Rotor_opt(R(i), c(i,j,k), thetatw, RPM(j), Nb, 3, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
+                        Rotor_opt(R(i), c(i,j,k), thetatw, RPM(j), Nb, 1, GW(n), trans_loss, nondp, motor_efficiency, nondt, theta0(k_mid), electrical_loss, rho,N_rotors);
                         %2 is for airfoil
                     
                     %------------BEMT------------------------------------
@@ -149,47 +147,6 @@ for k=1:size(V_cruise,2)
                         % Profile_power(i,j,k) = 0;
                         % Induced_power(i,j,k) = 0;
                     end
-                end
-    %% -----------------------------Cruise performance of the rotor--------------------------------
-                if(power_h(i,j,k)<0)
-                    gibrish=1;
-                    k_max = k_mid - 1;
-                    thrust_h(i,j,k) = 0;
-                    power_h(i,j,k) = 0;
-                    torque_h(i,j,k) = 0;
-                    C_P(i,j,k) = 0;
-                    C_T(i,j,k)= 0;
-                    theta_h(i,j,k) = theta0(k_mid);
-                    err(i,j,k) = 0;
-                    power_mech(i,j,k) = 0;
-                    count_k = k_mid;
-                    found = false;
-                    GW(n)=0;
-                    Power_total_hover(i,j,k)=0;
-                    power_cruise(i,j,k)=0;
-                end
-                k_min2 = 1000;
-                k_max2 = RPM(j);
-                found2 = false;
-                while k_min2 <= k_max2
-    
-                    k_mid2 = floor((k_min2 + k_max2) / 2);
-                    omega2(i,j,k)=k_mid2*2*pi/60;
-                    nondt2=rho*A*(omega2(i,j,k)*R(i))^2;%non-dimentional making terms for thrust
-                    nondp2=rho*A*(omega2(i,j,k)*R(i))^3;%non-dimentional making terms for pressure
-                    % for cruise fixed wing
-                    [thrust_2, power_2, torque_2, theta_2, err_2, FM2, BL2, mech_power2,CP2,CT2] = ...
-                        Rotor_opt(R(i), c(i,j,k), thetatw, k_mid2, Nb, 3, GW(n)/L_by_D/N_rotors_cruise, trans_loss, nondp2, motor_efficiency, nondt2, theta_h(i,j,k), electrical_loss, rho,1);
-                    if err_2 > 5
-                        k_max2 = k_mid2 - 1;
-                        err2(i,j,k)= err_2;
-                        Cruise_RPM(i,j,k)=k_mid2;
-                        power_cruise_hover(i,j,k)=power_2;% 0.85 is aerodynamic efficiency
-                    else
-                        k_min2 = k_mid2 + 1;
-    
-                    end
-                    % fprintf("1");
                 end
     %% ----------- 9 degree climb performance--------------------
                 % k_min3 = 1000;
@@ -249,36 +206,38 @@ for k=1:size(V_cruise,2)
                     
                 end
                 %------------calculation using MT(forward-flight)---------------------   
+                try
+                    [Prange(i,j,k), Vrange(i,j,k), Pendu(i,j,k), Vendu(i,j,k)] = forwardflight(R(i), Vtip, thrust_h(i,j,k)/N_rotors, nondp, solidity(i,j,k), h);
+                    Prange(i,j,k)=Prange(i,j,k)*4;
+                    Prange(i,j,k)=Prange(i,j,k)*+*6 n 4;
+
+                catch
+                    Prange(i,j,k) = 0;
+                    Vrange(i,j,k) = 0;
+                    Pendu(i,j,k) = 0;
+                    Vendu(i,j,k) = 0;
+                    fprintf(" Forwar");
+                    continue;  % Skip to next (j) iteration
+
+                end
+                %----Cruise power------------------------for vc and vd
                 % try
-                %     [Prange(i,j,k), Vrange(i,j,k), Pendu(i,j,k), Vendu(i,j,k)] = forwardflight(R(i), Vtip, thrust_h(i,j,k)/N_rotors, nondp, solidity(i,j,k), h);
+                % [Pcruise(i,j,k),P_rand(i,j,k)]=climb(thrust_h(i,j,k)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j,k),V_cruise(k),Vd);
                 % catch
-                %     Prange(i,j,k) = 0;
-                %     Vrange(i,j,k) = 0;
-                %     Pendu(i,j,k) = 0;
-                %     Vendu(i,j,k) = 0;
-                %     fprintf(" Forwar");
+                %     Pcruise(i,j,k)=0;
+                %     P_rand(i,j,k)=0;
+                %     fprintf(" cruise flight BEMT failed");
                 %     continue;  % Skip to next (j) iteration
                 % 
                 % end
-                %----Cruise power------------------------for vc and vd
-                try
-                [Pcruise(i,j,k),P_rand(i,j,k)]=climb(thrust_h(i,j,k)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j,k),V_cruise(k),Vd);
-                catch
-                    Pcruise(i,j,k)=0;
-                    P_rand(i,j,k)=0;
-                    fprintf(" cruise flight BEMT failed");
-                    continue;  % Skip to next (j) iteration
-    
-                end
                 % print("1");
-                Thrust_cruise(i,j,k)=GW(n)/L_by_D*g;
                 % Pcruise(i,j,k)= 0.5*Thrust_cruise(i,j,k)/N_rotors_cruise*V_cruise(k)*(1+sqrt(2*Thrust_cruise(i,j,k)/(rho*A*V_cruise(k)^2)));
-                power_cruise(i,j,k)= Pcruise(i,j,k)*N_rotors_cruise;
+                % power_cruise(i,j,k)= Pcruise(i,j,k)*N_rotors_cruise;
     %-----------Total energy and battery capacity required based on mission
     
-    %-----------Section 2 : 15 seconds hover HIGE (i havent considered HIG yet)--------------------------------------------------------------
-                e_section_2(i,j,k)= Power_total_hover(i,j,k)*15/1.5; %watt (every power is in watt)
-                time_section_2(i,j,k)= 15;
+    % %-----------Section 2 : 15 seconds hover HIGE (i havent considered HIG yet)--------------------------------------------------------------
+    %             e_section_2(i,j,k)= Power_total_hover(i,j,k)*15/1.5; %watt (every power is in watt)
+    %             time_section_2(i,j,k)= 15;
     %-----------Section 3 : vertical Climb from 0m to 60m @ 0.76m/s : ~79 seconds of climb--------------------------------------------------------------
                 p_section_3(i,j,k)= N_rotors*Pclimb(i,j,k);
                 e_section_3(i,j,k)=N_rotors*Pclimb(i,j,k)*60/Vc/motor_efficiency;
@@ -286,73 +245,17 @@ for k=1:size(V_cruise,2)
     %-----------Section 4 : 10 seconds hover HOGE--------------------------------------------------------------
                 e_section_4(i,j,k)=Power_total_hover(i,j,k)*10;
                 time_section_4(i,j,k)=10;
-    %-----------Section 5 : 9deg climb--------------------------------------------------------------
-                %Power=D*V_cruise_5 + W*sin(9)*V_cruise_5=L/L_D*V +Wsin(9)*V
-                %where L=Wcos(9)
-                try
-                    power_5(i,j,k)=power_cruise(i,j,k)+ V_cruise_climb*GW(n)*g; % by using excess power formula
-                    % power_5(i,j,k)= power_5(i,j,k)*N_rotors_cruise;
-                catch
-                    fprintf(" Climb performance failed")
-                    power_5(i,j,k)=N_rotors_cruise* 0.5*thrust_section_5(i,j,k)/N_rotors_cruise*V_cruise_climb*(1+sqrt(2*thrust_section_5(i,j,k)/N_rotors_cruise/(rho*A*V_cruise_climb^2)));
-                end
-                time_section_5(i,j,k)=(300-60)/V_cruise_climb;
-                e_section_5(i,j,k)= power_5(i,j,k)*time_section_5(i,j,k);
-    
-    
-    %-----------Section 6 : Cruise @300m (approx 30km)--------------------------------------------------------------
-                time_section_6(i,j,k)= 30000/V_cruise(k);
-                e_section_6(i,j,k)= power_cruise(i,j,k)*time_section_6(i,j,k);
-                
-    %-----------Section 7 : V descent @-7.6m/s from 300m to 30m (NO POWER)--------------------------------------------------------------
-                e_section_7(i,j,k)=0;
-                time_section_7(i,j,k)=(300-30)/7.6;
-    %-----------Section 8 : 30 seconds hover @30m--------------------------------------------------------------
-                e_section_8(i,j,k)=Power_total_hover(i,j,k)*30;
-                time_section_8(i,j,k)=30;
-    %-----------Section 9 : best endurance loiter @30m  the goal is to maximuise this time--------------------------------------------------------------
-    %           Basically all the energy that you have left should be utitlised
-    %           here to hover for max T9 seconds.
-                P_cruise_endurance(i,j,k)=climb(thrust_h(i,j,k)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j,k),V_endu_cruise,Vd);
-                % P_cruise_endurance(i,j,k)= Thrust_cruise(i,j,k)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j,k)/(rho*A*V_endu_cruise^2)));
-                power_endu(i,j,k)= P_cruise_endurance(i,j,k)*N_rotors_cruise;
-                eta = thrust_h*V_endu_cruise/(P_cruise_endurance*L_by_D*N_rotors_cruise);
-                e_section_9(i,j,k)=power_endu(i,j,k)*T9; %Joules
-                Cl_req(i,j,k)= GW(n)/2*g/(0.5*rho*V_endu_cruise^2*wing_S(i,j,k));
-    
-    %-----------Section 10 : 9deg climb from 30m to 300m--------------------------------------------------------------
-                e_section_10(i,j,k)=e_section_5(i,j,k);
-                time_section_10(i,j,k)= time_section_5(i,j,k);
-                
-    %-----------Section 11 : Cruise back approx 30km--------------------------------------------------------------
-                e_section_11(i,j,k)=e_section_6(i,j,k); %Joules
-                time_section_11(i,j,k)=time_section_6(i,j,k);
-    
-    %-----------Section 12 : 5 degree descent to 60m--------------------------------------------------------------
-                e_section_12(i,j,k)=0;
-                time_section_12(i,j,k)=(300-60)/7.6;
-    %-----------Section 13 : HOGE @60m for 10 seconds--------------------------------------------------------------
-                e_section_13(i,j,k)=Power_total_hover(i,j,k)*10;
-                time_section_13(i,j,k)= 10;
-    
-    %-----------Section 14 : Vertical descent @-0.5m/s from 60m to HIGE--------------------------------------------------------------
-                e_section_14(i,j,k)= N_rotors*Pdescent(i,j,k)*60/Vd/motor_efficiency;
-                time_section_14(i,j,k)=60/Vd;
-    %-----------Section 15 : HIGE for 15 seconds--------------------------------------------------------------
-                e_section_15(i,j,k)= Power_total_hover(i,j,k)*15*0.7;
-                time_section_15(i,j,k)=15;
+   
     %% -------------------- ENERGY CALCULATIONS------------------------------------------------------------------
                 % Endurance
-                endurance(i,j,k)=time_section_2(i,j,k)+time_section_3(i,j,k)+time_section_4(i,j,k)+time_section_5(i,j,k)+time_section_6(i,j,k)+...
-                    time_section_7(i,j,k)+time_section_8(i,j,k)+time_section_10(i,j,k)+time_section_11(i,j,k)+time_section_12(i,j,k)+time_section_13(i,j,k)+...
-                    time_section_14(i,j,k)+time_section_15(i,j,k)+T9;
-    
+                % endurance(i,j,k)=time_section_2(i,j,k)+time_section_3(i,j,k)+time_section_4(i,j,k)+time_section_5(i,j,k)+time_section_6(i,j,k)+...
+                %     time_section_7(i,j,k)+time_section_8(i,j,k)+time_section_10(i,j,k)+time_section_11(i,j,k)+time_section_12(i,j,k)+time_section_13(i,j,k)+...
+                %     time_section_14(i,j,k)+time_section_15(i,j,k)+T9;
+                endurance(i,j,k)= time_section_4(i,j,k)+time_section_3(i,j,k);
                 % Battery powered ( upto 30kg)
-                energy_init_battery(i,j,k)= e_section_3(i,j,k) + e_section_4(i,j,k)+e_section_8(i,j,k)+e_section_13(i,j,k) + e_section_14(i,j,k) + e_section_15(i,j,k);
+                energy_init_battery(i,j,k)= 0;
                 % Hydrogen powered
-                energy_init(i,j,k)=e_section_2(i,j,k) + e_section_5(i,j,k) + ...
-                  e_section_6(i,j,k) + e_section_7(i,j,k) +  e_section_9(i,j,k) + ...
-                  e_section_10(i,j,k) + e_section_11(i,j,k) + e_section_12(i,j,k) ;
+                energy_init(i,j,k)=e_section_3(i,j,k) + e_section_4(i,j,k);
                   
                 energy_hydrogen(i,j,k)=energy_init(i,j,k)/3600/batt_reserve; % Watt-hr energy after considering reserve;
                 energy_battery(i,j,k)=energy_init_battery(i,j,k)/3600/batt_reserve;
@@ -449,7 +352,7 @@ for k=1:size(V_cruise,2)
     %-----------NEW EMPTY WEIGHT---------------------------------------------------------------------------------------
                 mempty = m_rotor_group + mfuselage + mcontrols + melec + mlg + mfixed + m_transmission+ m_wing ;
     %-----------NEW GROSS WEIGHT----------------------------------------------------------------------------------------
-                mgross(i,j,k) = mempty+mfuel_cell(i,j,k)+mpayload ;%new gross weight
+                mgross(i,j,k) = mpayload;% mempty+mfuel_cell(i,j,k)+mpayload ;%new gross weight
                 m=m+1;
                 n=n+1;
                 GW(n) = mgross(i,j,k);
@@ -684,3 +587,19 @@ end
 % colorbar;
 % shading interp;
 % grid on;
+
+%% plotting
+figure;
+yyaxis left
+plot(RPM, O5, '-o', 'LineWidth', 1.5);
+ylabel('Blade Collective');
+
+yyaxis right
+plot(RPM, Power_total_hover/1000, '-s', 'LineWidth', 1.5);
+ylabel('Power Total Hover (KW)');
+
+xlabel('RPM');
+title('Blade Collective and Power vs RPM');
+grid on;
+legend('Blade Collective', 'Power Total Hover', 'Location', 'best');
+

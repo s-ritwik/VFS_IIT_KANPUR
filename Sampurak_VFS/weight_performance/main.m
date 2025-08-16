@@ -23,7 +23,7 @@ V_cruise=55%40:10:80;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
 N_rotors=8; %no of motors/rotors
-N_rotors_cruise=8; %no of motors/rotors active in cruise fixed wing mode
+N_rotors_cruise=2; %no of motors/rotors active in cruise fixed wing mode
 Vc=0.76;%climb speed in m/s
 Vd=0.5;% descent speed in m/s
 V_cruise_climb=6; %section 5 climb vel 
@@ -316,7 +316,6 @@ for k=1:size(V_cruise,2)
                 P_cruise_endurance(i,j,k)=climb(thrust_h(i,j,k)/N_rotors_cruise/L_by_D,rho,R(i),power_cruise_hover(i,j,k),V_endu_cruise,Vd);
                 % P_cruise_endurance(i,j,k)= Thrust_cruise(i,j,k)/N_rotors_cruise*V_endu_cruise*(1+sqrt(2*Thrust_cruise(i,j,k)/(rho*A*V_endu_cruise^2)));
                 power_endu(i,j,k)= P_cruise_endurance(i,j,k)*N_rotors_cruise;
-                eta = thrust_h*V_endu_cruise/(P_cruise_endurance*L_by_D*N_rotors_cruise);
                 e_section_9(i,j,k)=power_endu(i,j,k)*T9; %Joules
                 Cl_req(i,j,k)= GW(n)/2*g/(0.5*rho*V_endu_cruise^2*wing_S(i,j,k));
     
@@ -417,7 +416,7 @@ for k=1:size(V_cruise,2)
                 % Configuration is tandem wing 
                 
                 wing_S(i,j,k)=1/2*GW(n)*g*2/(wing_Cl_design*V_cruise(k)^2*rho); %wing area for a particular Cl
-                wing_b(i,j,k)= 7; %sqrt(wing_AR*wing_S(i,j,k));
+                wing_b(i,j,k)=sqrt(wing_AR*wing_S(i,j,k));
                 wing_root_chord=wing_S(i,j,k)/(1+wing_taper_ratio)*2/wing_b(i,j,k);
     
                 Ngust = (1 + 6.3 * wing_AR * wing_S(i,j,k) * V_cruise(k) * m_to_ft^3) / (GW(n) * kg_to_lb) / (2 + wing_AR)/6;

@@ -1,0 +1,29 @@
+Var1_1,Var1_2
+Number of Blades,3
+NumberOfRotors,8
+Radius,0.85
+TipSpeed,267.035375555132
+TotalThrust,6036.96730571599
+Extra thrust at hover,12.0538859969274
+TotalTorque_per_motor Nm,81.1456695439222
+RPM,3000
+MachNumber,0.765199092118092
+TotalHoverPower Watt,208941.311447849
+GrossWeight,614.794061135666
+TotalEnergy,53293.0892317583
+TotalBatteryMass,207.643630772528
+CollectiveInDegrees,20.62
+PowerLoading,0.0296014930121685
+DiskLoading,1329.84524289116
+MechanicalPower,203941.311447849
+BatteryMass,207.643630772528
+EmptyMass,222.150430363139
+FuselageMass,131.256614726262
+ClimbSpeed,0.76
+DescentSpeed,0.5
+CruiseVelocity,40
+CruiseVelocity_Climb,40
+AspectRatio,12
+TwistRate,-16
+Max endurance Velocity,16.6666666666667
+T9 time to be maximised for loiter,100
