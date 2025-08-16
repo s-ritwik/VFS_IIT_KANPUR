@@ -17,7 +17,7 @@ Cd=0.011;% drag coefficient
 cl_alpha=5.73;%lift coefficent
 %% --------------------------------Baseline Parameters---------------------------------------------------------------%
 R=0.99;%(in meters)
-RPM= 1250:25:1500;%:250:3500;
+RPM= 1200:25:1600;%:250:3500;
 V_cruise=55;
 %% ------------------------------- UAV Parameter---------------------------------------------------------------------
 Nb = 3;%no of blades 
@@ -590,16 +590,60 @@ end
 
 %% plotting
 figure;
+
 yyaxis left
 plot(RPM, O5, '-o', 'LineWidth', 1.5);
 ylabel('Blade Collective');
 
 yyaxis right
+hold on
 plot(RPM, Power_total_hover/1000, '-s', 'LineWidth', 1.5);
-ylabel('Power Total Hover (KW)');
+plot(RPM, Pendu/1000, '-o', 'LineWidth', 1.5,'Color',[0 1 0]);
+plot(RPM, Prange/1000, '-o', 'LineWidth', 1.5,'Color',[0 1 1]);
+
+ylabel('Power (kW)');
 
 xlabel('RPM');
 title('Blade Collective and Power vs RPM');
 grid on;
-legend('Blade Collective', 'Power Total Hover', 'Location', 'best');
 
+legend({'Blade Collective', 'Hover', ...
+        'Forward Flight (max endurance)','Forward Flight (max range)'}, ...
+        'Location', 'best');
+% Thicker axes + larger tick labels
+ax = gca;
+ax.FontSize = 16;      % tick-label size
+ax.LineWidth = 1;    % axis line thickness
+ax.TickDir = 'out';
+ax.TickLength = [0.015 0.015];
+%% plotting
+figure;
+
+yyaxis left
+hold on
+plot(RPM, Vrange, '-o', 'LineWidth', 1.5);
+plot(RPM, Vendu, '-s', 'LineWidth', 1.5);
+
+ylabel('Velocity (m/s)');
+
+yyaxis right
+hold on
+plot(RPM, Power_total_hover/1000, '-s', 'LineWidth', 1.5);
+% plot(RPM, Pendu/1000, '-o', 'LineWidth', 1.5,'Color',[0 1 0]);
+plot(RPM, Prange/1000, '-o', 'LineWidth', 1.5);
+
+ylabel('Power (kW)');
+
+xlabel('RPM');
+title('Blade Collective and Power vs RPM');
+grid on;
+
+legend({'Best range','Best endurance', 'Hover', ...
+        'Forward Flight (max range)'}, ...
+        'Location', 'best');
+% Thicker axes + larger tick labels
+ax = gca;
+ax.FontSize = 16;      % tick-label size
+ax.LineWidth = 1;    % axis line thickness
+ax.TickDir = 'out';
+ax.TickLength = [0.015 0.015];

@@ -3,7 +3,7 @@ K=1.15; %tip loss factor
 myu = Vforward/Vtip; %advance ratio
 Cd0=0.028;
 Ph0 = 0.125*sigma*Cd0*(1+K*myu^3)*nondp; % Hover Profile Power
-P0 = ((1+4.6*myu^2)*0.125*sigma*Cd0); %Forward Flight Profile Power(front+back)
+P0 = ((1+4.6*myu^2)*0.125*sigma*Cd0)*nondp; %Forward Flight Profile Power(front+back)
 
 Pp = 0.5*rho*Vforward^3*f; %Forward Flight Parasite Power
 
